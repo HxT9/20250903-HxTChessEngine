@@ -361,3 +361,12 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/arena_3.5.1
+/imgui/.github
+/imgui/docs
+/imgui/examples
+/imgui/misc
+/imgui/.editorconfig
+/imgui/.gitattributes
+/imgui/.gitignore
+/imgui/LICENSE.txt
