@@ -1,16 +1,11 @@
-#include "state.h"
+﻿#include "state.h"
 #include "constants.h"
 #include <cstdlib>
 
-state::state() : state(8, 8) { }
-
-state::state(int w, int h)
-{
-	width = w;
-	height = h;
+state::state() {
+	width = 8;
+	height = 8;
 	totalCells = width * height;
-
-	init();
 }
 
 state::~state()
@@ -18,7 +13,73 @@ state::~state()
 	free(board);
 	free(emptyCells);
 	free(whitePieces);
+	free(onTakeWhite);
 	free(blackPieces);
+	free(onTakeBlack);
+	free(enPassant);
+	free(movedPieces);
+}
+
+std::string state::toString()
+{
+	std::string ret = "";
+
+	for (int h = height - 1; h >= 0; h--) {
+		for (int w = 0; w < width; w++) {
+			int i = h * width + w;
+			if (isEmpty(i)) {
+				ret += "   ";
+				continue;
+			}
+
+			if (board[i] & constants::team::black) ret += "b"; else ret += "w";
+
+			if (board[i] & constants::piece::pawn) ret += "p";
+			if (board[i] & constants::piece::knight) ret += "n";
+			if (board[i] & constants::piece::bishop) ret += "b";
+			if (board[i] & constants::piece::rook) ret += "r";
+			if (board[i] & constants::piece::queen) ret += "q";
+			if (board[i] & constants::piece::king) ret += "k";
+
+			ret += " ";
+		}
+		ret += "\n";
+	}
+
+	return ret;
+}
+
+std::string state::toString(unsigned char* board) {
+	std::string ret = "";
+
+	for (int h = height - 1; h >= 0; h--) {
+		for (int w = 0; w < width; w++) {
+			ret += std::to_string(board[h * width + w]) + " ";
+		}
+		ret += "\n";
+	}
+
+	return ret;
+}
+
+const char* state::getUnicodePiece(int i)
+{
+	if (isEmpty(i)) return u8"\0";
+
+	if (board[i] & constants::piece::pawn)
+		return board[i] & constants::team::white ? u8"♙" : u8"♟";
+	if (board[i] & constants::piece::rook)
+		return board[i] & constants::team::white ? u8"♖" : u8"♜";
+	if (board[i] & constants::piece::knight)
+		return board[i] & constants::team::white ? u8"♘" : u8"♞";
+	if (board[i] & constants::piece::bishop)
+		return board[i] & constants::team::white ? u8"♗" : u8"♝";
+	if (board[i] & constants::piece::queen)
+		return board[i] & constants::team::white ? u8"♕" : u8"♛";
+	if (board[i] & constants::piece::king)
+		return board[i] & constants::team::white ? u8"♔" : u8"♚";
+
+	return u8"\0";
 }
 
 unsigned char* state::createBitBoard()
@@ -34,10 +95,26 @@ void state::init()
 	board = createBitBoard();
 	emptyCells = createBitBoard();
 	whitePieces = createBitBoard();
+	onTakeWhite = createBitBoard();
 	blackPieces = createBitBoard();
+	onTakeBlack = createBitBoard();
+	enPassant = createBitBoard();
+	movedPieces = createBitBoard();
 
 	if (width == 8 && height == 8)
 		initStdBoard();
+
+	for (int i = 0; i < width; i++)
+		if (board[i] == (constants::team::white | constants::piece::rook))
+			whiteOOOR >= 0 ? whiteOOR = i : whiteOOOR = i;
+
+	for (int i = totalCells - 1; i >= totalCells - width; i--)
+		if (board[i] == (constants::team::black | constants::piece::rook))
+			blackOOOR >= 0 ? blackOOR = i : blackOOOR = i;
+
+	turn = constants::team::white;
+
+	updateBoard();
 }
 
 void state::initStdBoard()
@@ -77,57 +154,6 @@ void state::initStdBoard()
 	board[63] = constants::team::black | constants::piece::rook;
 }
 
-std::string state::toString()
-{
-	std::string ret = "";
-
-	for (int h = height - 1; h >= 0; h--) {
-		for (int w = 0; w < width; w++) {
-			int i = h * width + w;
-			if (board[i] == constants::piece::empty) {
-				ret += "   ";
-				continue;
-			}
-
-			if (board[i] & constants::team::black) ret += "b"; else ret += "w";
-
-			if (board[i] & constants::piece::pawn) ret += "p";
-			if (board[i] & constants::piece::knight) ret += "n";
-			if (board[i] & constants::piece::bishop) ret += "b";
-			if (board[i] & constants::piece::rook) ret += "r";
-			if (board[i] & constants::piece::queen) ret += "q";
-			if (board[i] & constants::piece::king) ret += "k";
-
-			ret += " ";
-		}
-		ret += "\n";
-	}
-
-	return ret;
-}
-
-std::string state::toString(unsigned char* board) {
-	std::string ret = "";
-
-	for (int h = height - 1; h >= 0; h--) {
-		for (int w = 0; w < width; w++) {
-			ret += std::to_string(board[h * width + w]) + " ";
-		}
-		ret += "\n";
-	}
-
-	return ret;
-}
-
-void state::updateBoard()
-{
-	for (int i = 0; i < totalCells; i++) {
-		emptyCells[i] = board[i] == constants::piece::empty;
-		whitePieces[i] = board[i] & constants::team::white;
-		blackPieces[i] = board[i] & constants::team::black;
-	}
-}
-
 /*
 Get the cell using natural coordinates (A1, G5, F2...)
 row starting with 1
@@ -146,7 +172,86 @@ inline int* state::getCoordinate(int cell) {
 	return coordinates;
 }
 
-inline static void slidingPiecesMoves(int width, int height, unsigned char* board, int cell, bool isWhite, int* coordinates, unsigned char* possibleMoves, int moveX, int moveY) {
+inline static bool isEmpty(unsigned char* board, int cell) { return board[cell] == constants::piece::empty; }
+inline bool state::isEmpty(int cell) { return ::isEmpty(board, cell); }
+
+void state::updateBoard() {
+	memset(emptyCells, 0, totalCells);
+	memset(whitePieces, 0, totalCells);
+	memset(onTakeWhite, 0, totalCells);
+	memset(blackPieces, 0, totalCells);
+	memset(onTakeBlack, 0, totalCells);
+	for (int i = 0; i < totalCells; i++) {
+		if (isEmpty(i)) {
+			emptyCells[i] = 1;
+			continue;
+		}
+
+		if (board[i] & constants::team::white) {
+			whitePieces[i] = 1;
+			if (board[i] & constants::piece::king) whiteKing = i;
+			unsigned char* onTakeThis = getPossibleMoves(i, true);
+			for (int j = 0; j < totalCells; j++)
+				onTakeWhite[j] |= onTakeThis[j];
+			continue;
+		}
+
+		if (board[i] & constants::team::black) {
+			whitePieces[i] = 1;
+			if (board[i] & constants::piece::king) blackKing = i;
+			unsigned char* onTakeThis = getPossibleMoves(i, true);
+			for (int j = 0; j < totalCells; j++)
+				onTakeBlack[j] |= onTakeThis[j];
+			continue;
+		}
+	}
+
+	if (!checkingPosition) {
+		if (onTakeBlack[whiteKing]) {
+			if (!hasAnyLegalMove(constants::team::white))
+				end(constants::team::black, constants::endCause::checkmate);
+		}
+
+		if (onTakeWhite[blackKing]) {
+			if (!hasAnyLegalMove(constants::team::black))
+				end(constants::team::white, constants::endCause::checkmate);
+		}
+	}
+}
+
+bool state::hasAnyLegalMove(unsigned char team) {
+	state* newState = new state();
+	newState->init();
+	newState->checkingPosition = true;
+	for (int i = 0; i < totalCells; i++) {
+		if (!(board[i] & team)) continue;
+		unsigned char* possibleMoves = getPossibleMoves(i);
+		for (int j = 0; j < totalCells; j++) {
+			if (possibleMoves[j]) {
+				memcpy(newState->board, board, totalCells);
+				newState->makeMove(i, j);
+				if (team == constants::team::white && !newState->onTakeBlack[newState->whiteKing]) {
+					delete newState;
+					free(possibleMoves);
+					return true;
+				}
+				if (team == constants::team::black && !newState->onTakeWhite[newState->blackKing]) {
+					delete newState;
+					free(possibleMoves);
+					return true;
+				}
+			}
+		}
+		free(possibleMoves);
+	}
+	return false;
+}
+
+void state::end(unsigned char teamWin, unsigned char endCause) {
+	return;
+}
+
+inline static void slidingPiecesMoves(int width, int height, unsigned char* board, int cell, bool isWhite, int* coordinates, unsigned char* possibleMoves, int moveX, int moveY, bool onlyAttacking) {
 	for (int i = 1; ; i++) {
 		int nx = coordinates[0] + moveX * i;
 		int ny = coordinates[1] + moveY * i;
@@ -155,9 +260,12 @@ inline static void slidingPiecesMoves(int width, int height, unsigned char* boar
 			int destination = ny * width + nx;
 
 			if (board[destination] != constants::piece::empty) {
-				if (isWhite && board[destination] & constants::team::black) possibleMoves[destination] = 1;
-				if (!isWhite && board[destination] & constants::team::white) possibleMoves[destination] = 1;
-				break;
+				if (onlyAttacking || (isWhite && board[destination] & constants::team::black))
+					possibleMoves[destination] = 1;
+				if (onlyAttacking || (!isWhite && board[destination] & constants::team::white))
+					possibleMoves[destination] = 1;
+				if ((isWhite && board[destination] != (constants::team::black | constants::piece::king)) || 
+					(!isWhite && board[destination] != (constants::team::white | constants::piece::king))) break;
 			}
 			else {
 				possibleMoves[destination] = 1;
@@ -169,7 +277,42 @@ inline static void slidingPiecesMoves(int width, int height, unsigned char* boar
 	}
 }
 
-unsigned char* state::getPossibleMoves(int cell)
+inline bool canCastle(int king, int rook, int kingDest, int rookDest, unsigned char* board, unsigned char* moved, unsigned char* attacked) {
+	if (!moved[king] && !attacked[king]) {
+		if (rook >= 0 && !moved[rook]) {
+			bool canCastle = true;
+
+			//Visibility from king to rook
+			for (int i = std::min(king, rook) + 1; i < std::max(king, rook); i++)
+				if (!isEmpty(board, i)) {
+					canCastle = false;
+					break;
+				}
+
+			//Can move king to OOO
+			if (canCastle)
+				for (int i = std::min(king, kingDest); i <= std::max(king, kingDest); i++)
+					if (attacked[i] || (i != king && !isEmpty(board, i))) {
+						canCastle = false;
+						break;
+					}
+
+			//Can move rook to OOOR
+			if (canCastle)
+				for (int i = std::min(rook, rookDest); i <= std::max(rook, rookDest); i++)
+					if (!isEmpty(board, i)) {
+						canCastle = false;
+						break;
+					}
+
+			return canCastle;
+		}
+	}
+
+	return false;
+}
+
+unsigned char* state::getPossibleMoves(int cell, bool onlyAttacking)
 {
 	unsigned char* possibleMoves = createBitBoard();
 
@@ -179,28 +322,31 @@ unsigned char* state::getPossibleMoves(int cell)
 
 	if (board[cell] & constants::piece::pawn) {
 		if (isWhite) {
-			if (coordinates[1] == 1) possibleMoves[cell + width * 2] = 1;
-			if (board[cell + width] == constants::piece::empty) possibleMoves[cell + width] = 1;
-			if (board[cell + width - 1] & constants::team::black && coordinates[0] > 0) possibleMoves[cell + width - 1] = 1;
-			if (board[cell + width + 1] & constants::team::black && coordinates[0] < width - 1) possibleMoves[cell + width + 1] = 1;
+			if (!onlyAttacking && coordinates[1] == 1 && isEmpty(cell + width * 2))
+				possibleMoves[cell + width * 2] = 1;
+			if (!onlyAttacking && isEmpty(cell + width))
+				possibleMoves[cell + width] = 1;
+			if ((onlyAttacking || board[cell + width - 1] & constants::team::black) && coordinates[0] > 0) 
+				possibleMoves[cell + width - 1] = 1;
+			if ((onlyAttacking || board[cell + width + 1] & constants::team::black) && coordinates[0] < width - 1) 
+				possibleMoves[cell + width + 1] = 1;
 		}
 		else {
-			if (coordinates[1] == height - 2) possibleMoves[cell - width * 2] = 1;
-			if (board[cell - width] == constants::piece::empty) possibleMoves[cell - width] = 1;
-			if (board[cell - width - 1] & constants::team::white && coordinates[0] > 0) possibleMoves[cell - width - 1] = 1;
-			if (board[cell - width + 1] & constants::team::white && coordinates[0] < width - 1) possibleMoves[cell - width + 1] = 1;
+			if (!onlyAttacking && coordinates[1] == height - 2 && isEmpty(cell - width * 2))
+				possibleMoves[cell - width * 2] = 1;
+			if (!onlyAttacking && isEmpty(cell - width)) 
+				possibleMoves[cell - width] = 1;
+			if ((onlyAttacking || board[cell - width - 1] & constants::team::white) && coordinates[0] > 0)
+				possibleMoves[cell - width - 1] = 1;
+			if ((onlyAttacking || board[cell - width + 1] & constants::team::white) && coordinates[0] < width - 1)
+				possibleMoves[cell - width + 1] = 1;
 		}
 		free(coordinates);
 		return possibleMoves;
 	}
 
-	if (board[cell] & constants::piece::knight) {
-		const int moves[8][2] = {
-			{ 1,  2}, { 2,  1},
-			{ 2, -1}, { 1, -2},
-			{-1, -2}, {-2, -1},
-			{-2,  1}, {-1,  2}
-		};
+	if (board[cell] & constants::piece::king) {
+		int moves[8][2] = { {1,1}, {1,0}, {1,-1}, {0,-1}, {-1,-1}, {-1,0}, {-1,1}, {1,1} };
 
 		for (int i = 0; i < 8; i++) {
 			int nx = coordinates[0] + moves[i][0];
@@ -210,11 +356,56 @@ unsigned char* state::getPossibleMoves(int cell)
 				int destination = ny * width + nx;
 
 				if (isWhite) {
-					if (!(board[destination] & constants::team::white))
+					if ((onlyAttacking || !(board[destination] & constants::team::white)) && onTakeBlack[destination] == 0)
 						possibleMoves[destination] = 1;
 				}
 				else {
-					if (!(board[destination] & constants::team::black))
+					if ((onlyAttacking || !(board[destination] & constants::team::black)) && onTakeWhite[destination] == 0)
+						possibleMoves[destination] = 1;
+				}
+			}
+		}
+
+		//Castle
+		if (isWhite) {
+			int oo = 6;
+			int oor = 5;
+			int ooo = 2;
+			int ooor = 3;
+
+			possibleMoves[ooo] = canCastle(whiteKing, whiteOOOR, ooo, ooor, board, movedPieces, onTakeBlack);
+			possibleMoves[oo] = canCastle(whiteKing, whiteOOR, oo, oor, board, movedPieces, onTakeBlack);
+		}
+		else {
+			int oo = 62;
+			int oor = 61;
+			int ooo = 58;
+			int ooor = 59;
+
+			possibleMoves[ooo] = canCastle(blackKing, blackOOOR, ooo, ooor, board, movedPieces, onTakeWhite);
+			possibleMoves[oo] = canCastle(blackKing, blackOOR, oo, oor, board, movedPieces, onTakeWhite);
+		}
+
+		free(coordinates);
+		return possibleMoves;
+	}
+
+	if (board[cell] & constants::piece::knight) {
+		int moves[8][2] = { {1,2}, {2,1}, {2,-1}, {1,-2}, {-1,-2}, {-2,-1}, {-2,1}, {-1,2} };
+
+		for (int i = 0; i < 8; i++) {
+			int nx = coordinates[0] + moves[i][0];
+			int ny = coordinates[1] + moves[i][1];
+
+			if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+				int destination = ny * width + nx;
+
+				if (isWhite) {
+					if (onlyAttacking || !(board[destination] & constants::team::white))
+						possibleMoves[destination] = 1;
+				}
+				else {
+					if (onlyAttacking || !(board[destination] & constants::team::black))
 						possibleMoves[destination] = 1;
 				}
 			}
@@ -229,10 +420,13 @@ unsigned char* state::getPossibleMoves(int cell)
 		};
 
 		for (int dir = 0; dir < 4; dir++) {
-			slidingPiecesMoves(width, height, board, cell, isWhite, coordinates, possibleMoves, directions[dir][0], directions[dir][1]);
+			slidingPiecesMoves(width, height, board, cell, isWhite, coordinates, possibleMoves, directions[dir][0], directions[dir][1], onlyAttacking);
 		}
-		free(coordinates);
-		return possibleMoves;
+
+		if (!(board[cell] & constants::piece::queen)) {
+			free(coordinates);
+			return possibleMoves;
+		}
 	}
 
 	if (board[cell] & constants::piece::rook || board[cell] & constants::piece::queen) {
@@ -241,9 +435,38 @@ unsigned char* state::getPossibleMoves(int cell)
 		};
 
 		for (int dir = 0; dir < 4; dir++) {
-			slidingPiecesMoves(width, height, board, cell, isWhite, coordinates, possibleMoves, directions[dir][0], directions[dir][1]);
+			slidingPiecesMoves(width, height, board, cell, isWhite, coordinates, possibleMoves, directions[dir][0], directions[dir][1], onlyAttacking);
 		}
-		free(coordinates);
-		return possibleMoves;
+
+		if (!(board[cell] & constants::piece::queen)) {
+			free(coordinates);
+			return possibleMoves;
+		}
 	}
+
+	free(coordinates);
+	return possibleMoves;
+}
+
+unsigned char* state::getPossibleMoves(int cell) {
+	return getPossibleMoves(cell, false);
+}
+
+bool state::makeMove(int cellStart, int cellEnd) {
+	if (!checkingPosition && !(board[cellStart] & turn)) return false;
+
+	movedPieces[cellStart] = 1;
+	movedPieces[cellEnd] = 1;
+
+	memset(enPassant, 0, totalCells);
+	if (board[cellStart] & constants::piece::pawn && abs(cellEnd - cellStart) == (width * 2)) enPassant[(cellEnd + cellStart) / 2] = 1;
+
+	board[cellEnd] = board[cellStart];
+	board[cellStart] = constants::piece::empty;
+
+	updateBoard();
+
+	turn = turn == constants::team::white ? constants::team::black : constants::team::white;
+
+	return true;
 }

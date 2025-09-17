@@ -15,4 +15,13 @@ namespace constants {
 		const unsigned char white	= 0b01000000;
 		const unsigned char black	= 0b10000000;
 	}
+
+	namespace endCause{
+		const unsigned char checkmate = 1;
+		const unsigned char time = 2;
+		const unsigned char abandon = 3;
+		const unsigned char draw = 4;
+		const unsigned char stalemate = 5;
+		const unsigned char unknown = 255;
+	}
 }

@@ -29,23 +29,40 @@ public:
 	unsigned char* board;
 	unsigned char* emptyCells;
 	unsigned char* whitePieces;
+	unsigned char* onTakeWhite;
 	unsigned char* blackPieces;
+	unsigned char* onTakeBlack;
+	unsigned char* enPassant;
+	unsigned char* movedPieces;
 
-	int whiteKing, blackKing;
+	int whiteKing = -1, blackKing = -1;
+	int whiteOOR = -1, whiteOOOR = -1, blackOOR = -1, blackOOOR = -1;
+
+	unsigned char turn;
+
+	bool checkingPosition = false;
 
 	state();
-	state(int w, int h);
 	~state();
-
-	unsigned char* createBitBoard();
-	void init();
-	void initStdBoard();
-	void updateBoard();
-	unsigned char getCell(char column, int row);
-	int* getCoordinate(int cell);
-
-	unsigned char* getPossibleMoves(int cell);
 
 	std::string toString();
 	std::string toString(unsigned char* board);
+	const char* getUnicodePiece(int i);
+
+	unsigned char* createBitBoard();
+	unsigned char getCell(char column, int row);
+	int* getCoordinate(int cell);
+	bool isEmpty(int cell);
+
+	void init();
+	void initStdBoard();
+	void updateBoard();
+	bool hasAnyLegalMove(unsigned char team);
+
+	void end(unsigned char teamWin, unsigned char endCause);
+
+	unsigned char* getPossibleMoves(int cell, bool onlyAttacking);
+	unsigned char* getPossibleMoves(int cell);
+
+	bool makeMove(int cellStart, int cellEnd);
 };
