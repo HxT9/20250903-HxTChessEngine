@@ -21,11 +21,11 @@ int uciLoop() {
             std::cout << "readyok\n";
         }
         else if (line == "ucinewgame") {
-            s.initStdBoard();
+            s.initBoard();
         }
         else if (line.rfind("position", 0) == 0) {
             // TODO: parse "startpos" o "fen ..."
-            s.initStdBoard();
+            s.initBoard();
         }
         else if (line.rfind("go", 0) == 0) {
             // TODO: calcolo mosse

@@ -1,5 +1,10 @@
 #pragma once
 #include <string>
+#include <vector>
+#include "bitBoard.h"
+#include "typeBoard.h"
+#include "constants.h"
+#include "nTreeNode.h"
 
 /*
 8
@@ -22,47 +27,64 @@
  0  1  2  3  4  5  6  7
 */
 
+const int whiteOOR = 7, whiteOOOR = 0, blackOOR = 63, blackOOOR = 56;
+const int whiteOO = 6, whiteOOO = 2, blackOO = 62, blackOOO = 58;
+
 class state {
 public:
-	int width, height, totalCells;
+	int width = 8, height = 8, totalCells = width * height;
 
-	unsigned char* board;
-	unsigned char* emptyCells;
-	unsigned char* whitePieces;
-	unsigned char* onTakeWhite;
-	unsigned char* blackPieces;
-	unsigned char* onTakeBlack;
-	unsigned char* enPassant;
-	unsigned char* movedPieces;
+	typeBoard<__int8>* board = nullptr;
+	
+	bitBoard onTakeWhite;
+	bitBoard onTakeBlack;
+	bitBoard enPassantWhite;
+	bitBoard enPassantBlack;
+	bitBoard movedPieces;
 
-	int whiteKing = -1, blackKing = -1;
-	int whiteOOR = -1, whiteOOOR = -1, blackOOR = -1, blackOOOR = -1;
+	int whiteKing = 4, blackKing = 60;
+	bool whiteKingCastle = false, blackKingCastle = false;
 
-	unsigned char turn;
+	__int8 turn = constants::team::white;
 
 	bool checkingPosition = false;
+	bool isEnded = false;
+
+	state* previousState = nullptr;
+
+	float evaluation = 0;
+	int bestMove[2] = { -1, -1 };
 
 	state();
+	state(state* toCopy);
 	~state();
 
+	void copyToPrevious();
+	void restorePrevious();
+
 	std::string toString();
-	std::string toString(unsigned char* board);
+	std::string toString(typeBoard<__int8> board);
 	const char* getUnicodePiece(int i);
 
-	unsigned char* createBitBoard();
-	unsigned char getCell(char column, int row);
+	__int8 getCell(char column, int row);
 	int* getCoordinate(int cell);
 	bool isEmpty(int cell);
 
 	void init();
-	void initStdBoard();
+	void initBoard();
 	void updateBoard();
-	bool hasAnyLegalMove(unsigned char team);
+	float evaluate();
+	float search(state* s, int depth, int alpha, int beta, bool isWhite);
+	void calcBestMove(int depth);
+	void end(__int8 teamWin, __int8 endCause);
+	bool hasAnyLegalMove(__int8 team);
 
-	void end(unsigned char teamWin, unsigned char endCause);
-
-	unsigned char* getPossibleMoves(int cell, bool onlyAttacking);
-	unsigned char* getPossibleMoves(int cell);
+	bool canCastle(int king, int rook, int kingDest, int rookDest, bitBoard attacked);
+	void slidingPiecesMoves(int cell, int* coordinates, std::vector<__int8> &possibleMoves, int moveX, int moveY, bool onlyAttacking);
+	std::vector<__int8> getPossibleMoves(int cell, bool onlyAttacking);
+	std::vector<__int8> checkPossibleMoves(int cell, std::vector<__int8> possibleMoves);
+	std::vector<__int8> getPossibleMoves(int cell);
+	bitBoard getPossibleMovesBB(int cell);
 
 	bool makeMove(int cellStart, int cellEnd);
 };

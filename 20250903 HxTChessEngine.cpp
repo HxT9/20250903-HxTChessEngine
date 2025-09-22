@@ -8,16 +8,10 @@ Variables:
 #include "state.h"
 #include "interfaces.h"
 
+#include "typeBoard.h"
+
 int main()
 {
-    state currentState = state();
-    currentState.init();
-
-    //std::cout << currentState.toString() << std::endl;
-    
-    unsigned char* possibleMoves = currentState.getPossibleMoves(1);
-    //std::cout << currentState.toString(currentState.onTakeWhite) << std::endl;
-
     //uciLoop();
     localGui();
 

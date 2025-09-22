@@ -9,9 +9,13 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+int w = 200, h = w + 50;
+
 state* s;
 ID3D11ShaderResourceView* pieceTextures[13];
 int selectedCell = -1;
+
+bitBoard possibleMoves;
 
 int initDraw();
 
@@ -25,11 +29,7 @@ int localGuiDraw() {
 }
 
 void drawChessBoard() {
-    float cellSize = 90.f;
-
-    unsigned char* possibleMoves = nullptr;
-    if (selectedCell >= 0)
-        possibleMoves = s->getPossibleMoves(selectedCell);
+    float cellSize = (w - 20) / 8;
 
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
@@ -39,51 +39,66 @@ void drawChessBoard() {
 
             ImU32 col = ((x + y) % 2 == 0) ? IM_COL32(240, 217, 181, 255) : IM_COL32(181, 136, 99, 255);
             ImGui::GetWindowDrawList()->AddRectFilled(topLeft, bottomRight, col);
-            if (s->board[i] != constants::piece::empty) {
-                ImTextureID tex;
-                if (s->board[i] & constants::piece::pawn)
-                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[0] : (ImTextureID)pieceTextures[6];
-                if (s->board[i] & constants::piece::rook)
-                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[1] : (ImTextureID)pieceTextures[7];
-                if (s->board[i] & constants::piece::knight)
-                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[2] : (ImTextureID)pieceTextures[8];
-                if (s->board[i] & constants::piece::bishop)
-                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[3] : (ImTextureID)pieceTextures[9];
-                if (s->board[i] & constants::piece::queen)
-                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[4] : (ImTextureID)pieceTextures[10];
-                if (s->board[i] & constants::piece::king)
-                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[5] : (ImTextureID)pieceTextures[11];
-                ImGui::GetWindowDrawList()->AddImage(tex, topLeft, bottomRight);
+            if (s->board->at(i) != constants::piece::empty) {
+                ImTextureID tex = 0;
+                if (s->board->at(i) & constants::piece::pawn)
+                    tex = s->board->at(i) & constants::team::white ? (ImTextureID)pieceTextures[0] : (ImTextureID)pieceTextures[6];
+                if (s->board->at(i) & constants::piece::rook)
+                    tex = s->board->at(i) & constants::team::white ? (ImTextureID)pieceTextures[1] : (ImTextureID)pieceTextures[7];
+                if (s->board->at(i) & constants::piece::knight)
+                    tex = s->board->at(i) & constants::team::white ? (ImTextureID)pieceTextures[2] : (ImTextureID)pieceTextures[8];
+                if (s->board->at(i) & constants::piece::bishop)
+                    tex = s->board->at(i) & constants::team::white ? (ImTextureID)pieceTextures[3] : (ImTextureID)pieceTextures[9];
+                if (s->board->at(i) & constants::piece::queen)
+                    tex = s->board->at(i) & constants::team::white ? (ImTextureID)pieceTextures[4] : (ImTextureID)pieceTextures[10];
+                if (s->board->at(i) & constants::piece::king)
+                    tex = s->board->at(i) & constants::team::white ? (ImTextureID)pieceTextures[5] : (ImTextureID)pieceTextures[11];
+                if (tex ) ImGui::GetWindowDrawList()->AddImage(tex, topLeft, bottomRight);
             }
 
-            if (i == selectedCell)
-                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 0, 255), 0.f, 0, 5.f);
-
-            if (possibleMoves && possibleMoves[i]) {
+            if (possibleMoves.get(i)) {
                 ImTextureID tex = (ImTextureID)pieceTextures[12];
                 ImGui::GetWindowDrawList()->AddImage(tex, topLeft, bottomRight);
             }
 
-            
+            /*if (s->onTakeWhite.get(i))
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 255, 255), 0.f, 0, 6.f);
+
+            if (s->onTakeBlack.get(i))
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 0, 0, 255), 0.f, 0, 3.f);*/
+
+            if (i == s->bestMove[0])
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 255, 0, 255), 0.f, 0, 3.f);
+            if (i == s->bestMove[1])
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 200, 0, 255), 0.f, 0, 3.f);
+
+            if (i == selectedCell)
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 0, 255), 0.f, 0, 3.f);
+
             char id[32];
             sprintf_s(id, "cell_%d", i);
             ImGui::SetCursorScreenPos(topLeft);
             if (ImGui::InvisibleButton(id, ImVec2{ cellSize, cellSize })) {
-                printf("clicked %s\n", id);
-
-                if (selectedCell >= 0 && s->board[selectedCell] != constants::piece::empty && possibleMoves[i]) {
+                if (selectedCell >= 0 && s->board->at(selectedCell) != constants::piece::empty && possibleMoves.get(i)) {
                     s->makeMove(selectedCell, i);
                     selectedCell = -1;
+                    possibleMoves.data = 0;
                 }
                 else {
                     selectedCell = i;
+                    possibleMoves = s->getPossibleMovesBB(selectedCell);
                 }
             }
         }
     }
+}
 
-    if (possibleMoves) free(possibleMoves);
-
+void handleKeyDown(MSG msg) {
+    switch (msg.wParam) {
+    case 'Z':
+        if (GetKeyState(VK_CONTROL) & 0x8000)
+            s->restorePrevious();
+    }
 }
 
 static ID3D11Device* g_pd3dDevice = nullptr;
@@ -223,7 +238,7 @@ int initDraw(){
     // Create application window
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr };
     RegisterClassExW(&wc);
-    HWND hwnd = CreateWindowW(wc.lpszClassName, L"HxTChess", WS_OVERLAPPEDWINDOW, 100, 100, (int)(800 * main_scale), (int)(800 * main_scale), nullptr, nullptr, wc.hInstance, nullptr);
+    HWND hwnd = CreateWindowW(wc.lpszClassName, L"HxTChess", WS_OVERLAPPEDWINDOW, 100, 100, (int)(w * main_scale), (int)(h * main_scale), nullptr, nullptr, wc.hInstance, nullptr);
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -286,8 +301,13 @@ int initDraw(){
         {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
-            if (msg.message == WM_QUIT)
+            switch (msg.message) {
+            case WM_QUIT:
                 done = true;
+                break;
+            case WM_KEYDOWN:
+                handleKeyDown(msg);
+            }
         }
         if (done)
             break;

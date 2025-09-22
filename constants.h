@@ -2,26 +2,26 @@
 
 namespace constants {
 	namespace piece {
-		const unsigned char empty	= 0b00000000;
-		const unsigned char pawn	= 0b00000001;
-		const unsigned char knight	= 0b00000010;
-		const unsigned char bishop	= 0b00000100;
-		const unsigned char rook	= 0b00001000;
-		const unsigned char queen	= 0b00010000;
-		const unsigned char king	= 0b00100000;
+		const __int8 empty	= 0b00000000;
+		const __int8 pawn	= 0b00000001;
+		const __int8 knight	= 0b00000010;
+		const __int8 bishop	= 0b00000100;
+		const __int8 rook	= 0b00001000;
+		const __int8 queen	= 0b00010000;
+		const __int8 king	= 0b00100000;
 	}
 
 	namespace team {
-		const unsigned char white	= 0b01000000;
-		const unsigned char black	= 0b10000000;
+		const __int8 white	= 0b01000000;
+		const __int8 black	= 0b10000000;
 	}
 
 	namespace endCause{
-		const unsigned char checkmate = 1;
-		const unsigned char time = 2;
-		const unsigned char abandon = 3;
-		const unsigned char draw = 4;
-		const unsigned char stalemate = 5;
-		const unsigned char unknown = 255;
+		const __int8 checkmate = 1;
+		const __int8 time = 2;
+		const __int8 abandon = 3;
+		const __int8 draw = 4;
+		const __int8 stalemate = 5;
+		const __int8 unknown = 255;
 	}
 }
