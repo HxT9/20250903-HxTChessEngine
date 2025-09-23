@@ -68,7 +68,7 @@ void state::updateBoard() {
 		evaluation = evaluate();
 		printf_s("Evaluation: %f\n", evaluation / 100);
 
-		//calcBestMove(2);
+		calcBestMove(3);
 	}
 }
 

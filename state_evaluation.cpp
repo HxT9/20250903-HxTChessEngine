@@ -179,7 +179,6 @@ float state::search(state* s, int depth, int alpha, int beta, bool isWhite) {
 }*/
 
 void state::calcBestMove(int depth) {
-	return;
 	dbg_level0 = 0;
 	dbg_level1 = 0;
 	dbg_level2 = 0;
@@ -190,7 +189,6 @@ void state::calcBestMove(int depth) {
 	args[1] = (__int64)this;
 	checkingPosition = true;
 	temp(args);
-
 	dbg_level0 = 0;
 	dbg_level1 = 0;
 	dbg_level2 = 0;
