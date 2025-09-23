@@ -154,6 +154,10 @@
     <ClCompile Include="interfaces.cpp" />
     <ClCompile Include="localGui.cpp" />
     <ClCompile Include="state.cpp" />
+    <ClCompile Include="state_debug.cpp" />
+    <ClCompile Include="state_evaluation.cpp" />
+    <ClCompile Include="state_moves.cpp" />
+    <ClCompile Include="state_utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bitBoard.h" />
@@ -163,7 +167,6 @@
     <ClInclude Include="nTreeNode.h" />
     <ClInclude Include="state.h" />
     <ClInclude Include="stb_image.h" />
-    <ClInclude Include="typeBoard.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

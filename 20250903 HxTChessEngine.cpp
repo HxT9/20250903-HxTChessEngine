@@ -8,7 +8,12 @@ Variables:
 #include "state.h"
 #include "interfaces.h"
 
-#include "typeBoard.h"
+class test {
+public:
+    std::vector<int> dati;
+    test() { dati.push_back(10); }
+    //test(test* toCopy) { dati = toCopy->dati; }
+};
 
 int main()
 {

@@ -8,7 +8,7 @@ int localGui() {
 }
 
 int uciLoop() {
-    state s = state();
+    state s;
 
     std::string line;
     while (std::getline(std::cin, line)) {

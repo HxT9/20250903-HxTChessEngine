@@ -39,20 +39,20 @@ void drawChessBoard() {
 
             ImU32 col = ((x + y) % 2 == 0) ? IM_COL32(240, 217, 181, 255) : IM_COL32(181, 136, 99, 255);
             ImGui::GetWindowDrawList()->AddRectFilled(topLeft, bottomRight, col);
-            if (s->board->at(i) != constants::piece::empty) {
+            if (!s->isEmpty(i)) {
                 ImTextureID tex = 0;
-                if (s->board->at(i) & constants::piece::pawn)
-                    tex = s->board->at(i) & constants::team::white ? (ImTextureID)pieceTextures[0] : (ImTextureID)pieceTextures[6];
-                if (s->board->at(i) & constants::piece::rook)
-                    tex = s->board->at(i) & constants::team::white ? (ImTextureID)pieceTextures[1] : (ImTextureID)pieceTextures[7];
-                if (s->board->at(i) & constants::piece::knight)
-                    tex = s->board->at(i) & constants::team::white ? (ImTextureID)pieceTextures[2] : (ImTextureID)pieceTextures[8];
-                if (s->board->at(i) & constants::piece::bishop)
-                    tex = s->board->at(i) & constants::team::white ? (ImTextureID)pieceTextures[3] : (ImTextureID)pieceTextures[9];
-                if (s->board->at(i) & constants::piece::queen)
-                    tex = s->board->at(i) & constants::team::white ? (ImTextureID)pieceTextures[4] : (ImTextureID)pieceTextures[10];
-                if (s->board->at(i) & constants::piece::king)
-                    tex = s->board->at(i) & constants::team::white ? (ImTextureID)pieceTextures[5] : (ImTextureID)pieceTextures[11];
+                if (s->board[i] & constants::piece::pawn)
+                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[0] : (ImTextureID)pieceTextures[6];
+                if (s->board[i] & constants::piece::rook)
+                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[1] : (ImTextureID)pieceTextures[7];
+                if (s->board[i] & constants::piece::knight)
+                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[2] : (ImTextureID)pieceTextures[8];
+                if (s->board[i] & constants::piece::bishop)
+                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[3] : (ImTextureID)pieceTextures[9];
+                if (s->board[i] & constants::piece::queen)
+                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[4] : (ImTextureID)pieceTextures[10];
+                if (s->board[i] & constants::piece::king)
+                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[5] : (ImTextureID)pieceTextures[11];
                 if (tex ) ImGui::GetWindowDrawList()->AddImage(tex, topLeft, bottomRight);
             }
 
@@ -79,7 +79,7 @@ void drawChessBoard() {
             sprintf_s(id, "cell_%d", i);
             ImGui::SetCursorScreenPos(topLeft);
             if (ImGui::InvisibleButton(id, ImVec2{ cellSize, cellSize })) {
-                if (selectedCell >= 0 && s->board->at(selectedCell) != constants::piece::empty && possibleMoves.get(i)) {
+                if (selectedCell >= 0 && !s->isEmpty(selectedCell) && possibleMoves.get(i)) {
                     s->makeMove(selectedCell, i);
                     selectedCell = -1;
                     possibleMoves.data = 0;
