@@ -1,28 +1,49 @@
 #pragma once
 #include <string>
-#include <vector>
 #include <stack>
-
-#define _USE_VECTORBOARD
 
 #define _BITBOARD_FOR_BEGIN(bb) while(bb) {
 #define _BITBOARD_GET_FIRST_1(bb) _tzcnt_u64(bb);
 #define _BITBOARD_FOR_END(bb) bb &= bb - 1;}
 
-const int whiteOOR = 7, whiteOOOR = 0, blackOOR = 63, blackOOOR = 56;
-const int whiteOO = 6, whiteOOO = 2, blackOO = 62, blackOOO = 58;
+namespace castle {
+	const int whiteKing = 4, blackKing = 60; //king starting position
+	const int whiteOOR = 7, whiteOOOR = 0, blackOOR = 63, blackOOOR = 56; //rook starting position
+	const int whiteOO = 6, whiteOOO = 2, blackOO = 62, blackOOO = 58; //king castling position
+	const int whiteROO = 5, whiteROOO = 3, blackROO = 61, blackROOO = 59; //rook castling position
+}
+
+uint64_t kingMoves[64];
+uint64_t knightMoves[64];
+
+struct Magic {
+	uint64_t mask;
+	uint64_t magic;
+	int shift;
+	uint64_t* attacks;
+};
+uint64_t rookMasks[64];
+uint64_t bishopMasks[64];
+Magic rookMagics[64];
+Magic bishopMagics[64];
+uint64_t rookMoves[64][4096];
+uint64_t bishopMoves[64][512];
+uint64_t whitePawnPushes[64];
+uint64_t whitePawnDoublePushes[64];
+uint64_t whitePawnCaptures[64];
+uint64_t blackPawnPushes[64];
+uint64_t blackPawnDoublePushes[64];
+uint64_t blackPawnCaptures[64];
+void initMoves();
 
 struct moveData {
-	int from_i, to_i;
-	__int8 from_d, to_d;
-	int other1_i = -1, other2_i = -1;
-	__int8 other1_d, other2_d;
-	__int8 turn;
-	int enPassantWhite;
-	int enPassantBlack;
-	__int64 movedPieces;
-	__int64 onTakeWhite;
-	__int64 onTakeBlack;
+	//main bitboards
+	uint64_t whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKing;
+	uint64_t blackPawns, blackKnights, blackBishops, blackRooks, blackQueens, blackKing;
+	uint64_t movedPieces, onTakeWhite, onTakeBlack;
+
+	//other
+	int turn, enPassant;
 	bool whiteKingCastle, blackKingCastle;
 };
 
@@ -32,28 +53,24 @@ public:
 	const int width = 8, height = 8, totalCells = width * height;
 	
 	//Calculated with updateBoard
-	int whiteKing = 4, blackKing = 60;
 	bool isEnded = false;
 
-	//Managed data
-#ifdef _USE_VECTORBOARD
-	std::vector<__int8> board = std::vector<__int8>(64);
-#else
-	__int8 board[64];
-#endif
-	__int8 turn = 0;
-	int enPassantWhite;
-	int enPassantBlack;
-	__int64 movedPieces;
-	__int64 onTakeWhite;
-	__int64 onTakeBlack;
-	bool whiteKingCastle = false, blackKingCastle = false;
+	//main bitboards
+	uint64_t whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKing;
+	uint64_t blackPawns, blackKnights, blackBishops, blackRooks, blackQueens, blackKing;
+	uint64_t movedPieces, onTakeWhite, onTakeBlack;
+
+	//Derived bitboards
+	uint64_t whitePieces, blackPieces, occupied, empty;	
+
+	//other
+	int turn;
+	uint64_t enPassant;
+	bool whiteKingCastle, blackKingCastle;
+
 	int checkingPosition = 0;
 
 	std::stack<moveData> moves;
-
-	//allocations
-	int coordinates[2] = { -1, -1 };
 
 	state();
 	state(state* toCopy);
@@ -61,7 +78,8 @@ public:
 	~state();
 	void init();
 	void updateBoard();
-	void end(__int8 teamWin, __int8 endCause);
+	void end(int teamWin, int endCause);
+	bool makeMove(int cellStart, int cellEnd);
 
 	//utilities
 	std::string toString();
@@ -70,24 +88,37 @@ public:
 	void undoMove();
 	void copyBoardFrom(state* toCopy);
 	void initBoard();
-	__int8 getCell(char column, int row);
-	int* setCoordinates(int cell);
-	bool isEmpty(int cell);
+	int getPiece(char column, int row);
+	inline bool isEmpty(int cell);
+	inline bool isWhite(int cell);
+
 	//BitBoardUtilities
-	bool getBB(__int64& data, int i);
-	void setBB(__int64& data, int i);
-	void resetBB(__int64& data, int i);
+	inline bool getBB(uint64_t& data, int i);
+	inline void setBB(uint64_t& data, int i);
+	inline void resetBB(uint64_t& data, int i);
+
+	int getPiece(int cell);
+	int getPieceType(int cell);
+	void setPiece(int cell, int piece);
+	void clearPiece(int cell);
+	uint64_t getPieces(int pieceType, int team);
 
 	//moves
-	__int64 getPossibleMoves(int cell, bool onlyAttacking);
-	__int64 checkPossibleMoves(int cell, __int64 possibleMoves);
-	__int64 getPossibleMoves(int cell);
-	std::vector<bool> getPossibleMovesVector(int cell);
-	bool canCastle(int king, int rook, int kingDest, int rookDest, __int64 attacked);
-	void slidingPiecesMoves(int cell, int* coordinates, __int64 &possibleMoves, int moveX, int moveY, bool onlyAttacking);
-	bool hasAnyLegalMove(__int8 team);
+	uint64_t getKingMoves(int cell);
+	uint64_t getKnightMoves(int cell);
+	uint64_t getRookMoves(int cell);
+	uint64_t getBishopMoves(int cell);
+	uint64_t getQueenMoves(int cell);
+	uint64_t getPawnMoves(int cell);
+	uint64_t getPossibleMoves(int cell);
+	uint64_t getAllAttacks(bool isWhite);
+
+	uint64_t checkPossibleMoves(int cell, uint64_t possibleMoves);
+	uint64_t getPossibleMoves(int cell);
+	bool canCastle(int king, int rook, int kingDest, int rookDest, uint64_t attacked);
+	void slidingPiecesMoves(int cell, int* coordinates, uint64_t &possibleMoves, int moveX, int moveY, bool onlyAttacking);
+	bool hasAnyLegalMove(int team);
 	void handleSpecialMoves(int cellStart, int cellEnd);
-	bool makeMove(int cellStart, int cellEnd);
 
 	//evaluation
 	float evaluation = 0;
@@ -95,9 +126,4 @@ public:
 	float evaluate();
 	float search(state* s, int depth, int alpha, int beta, bool isWhite);
 	void calcBestMove(int depth);
-
-	//debug
-	void temp(std::vector<__int64> args);
-	void temp2(std::vector<__int64> args);
-	int dbg_level0 = 0, dbg_level1 = 0, dbg_level2 = 0, dbg_level3 = 0;
 };

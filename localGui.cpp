@@ -15,7 +15,7 @@ state* s;
 ID3D11ShaderResourceView* pieceTextures[13];
 int selectedCell = -1;
 
-__int64 possibleMoves;
+uint64_t possibleMoves;
 
 int initDraw();
 

@@ -144,6 +144,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="20250903 HxTChessEngine.cpp" />
+    <ClCompile Include="debug.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_dx11.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
@@ -154,9 +155,9 @@
     <ClCompile Include="interfaces.cpp" />
     <ClCompile Include="localGui.cpp" />
     <ClCompile Include="state.cpp" />
-    <ClCompile Include="state_debug.cpp" />
     <ClCompile Include="state_evaluation.cpp" />
     <ClCompile Include="state_moves.cpp" />
+    <ClCompile Include="state_moves_generator.cpp" />
     <ClCompile Include="state_utilities.cpp" />
   </ItemGroup>
   <ItemGroup>

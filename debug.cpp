@@ -1,8 +1,11 @@
 #include "state.h"
-#include <cstdarg>
 
-void state::temp(std::vector<__int64> args) {
-	int level = args[0];
+int dbg_level0;
+int dbg_level1;
+int dbg_level2;
+int dbg_level3;
+
+void temp(state* s, int level) {
 	if (level <= 0) return;
 
 	switch (level) {
@@ -20,11 +23,7 @@ void state::temp(std::vector<__int64> args) {
 		break;
 	}
 
-	__int64 pm;
-	state* s = new state((state*)args[1]);
-
-	std::vector<__int64> new_args(2);
-	new_args[0] = level - 1;
+	uint64_t pm;
 
 	for (int i = 0; i < s->totalCells; i++) {
 		if (s->isEmpty(i) || !(s->board[i] & s->turn)) continue;
@@ -35,15 +34,13 @@ void state::temp(std::vector<__int64> args) {
 			state* s2 = new state(s);
 			s2->checkingPosition++;
 			s2->makeMove(i, j);
-			new_args[1] = (__int64)s2;
-			temp(new_args);
+			temp(s, level - 1);
 			delete s2;
 		_BITBOARD_FOR_END(pm)
 	}
 }
 
-void state::temp2(std::vector<__int64> args) {
-	int level = args[0];
+void temp2(state* s, int level) {
 	if (level <= 0) return;
 
 	switch (level) {
@@ -61,7 +58,7 @@ void state::temp2(std::vector<__int64> args) {
 		break;
 	}
 
-	__int64 pm;
+	uint64_t pm;
 
 	args[0] -= 1;
 
@@ -73,7 +70,7 @@ void state::temp2(std::vector<__int64> args) {
 			int j = _BITBOARD_GET_FIRST_1(pm)
 
 			makeMove(i, j);
-			temp2(args);
+			temp2(s, level - 1);
 			undoMove();
 		_BITBOARD_FOR_END(pm)
 	}

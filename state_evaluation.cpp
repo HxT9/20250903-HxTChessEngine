@@ -124,7 +124,7 @@ float state::search(state* s, int depth, int alpha, int beta, bool isWhite) {
 	for (int cell = 0; cell < totalCells; cell++) {
 		if (!s->isEmpty(cell) && ((isWhite && s->board[cell] & constants::team::white) ||
 			(!isWhite && s->board[cell] & constants::team::black))) {
-			__int64 moves = s->getPossibleMoves(cell);
+			uint64_t moves = s->getPossibleMoves(cell);
 
 			_BITBOARD_FOR_BEGIN(moves)
 				int dest = _BITBOARD_GET_FIRST_1(moves)
@@ -180,21 +180,10 @@ float state::search(state* s, int depth, int alpha, int beta, bool isWhite) {
 	evaluation = bestVal;
 }*/
 
+#include "debug.cpp"
 void state::calcBestMove(int depth) {
-	dbg_level0 = 0;
-	dbg_level1 = 0;
-	dbg_level2 = 0;
-	dbg_level3 = 0;
-
-	std::vector<__int64> args(2);
-	args[0] = depth + 1;
-	args[1] = (__int64)this;
 	checkingPosition++;
-	temp(args);
-	dbg_level0 = 0;
-	dbg_level1 = 0;
-	dbg_level2 = 0;
-	dbg_level3 = 0;
-	temp2(args);
+	temp(this, depth);
+	temp2(this, depth);
 	checkingPosition--;
 }

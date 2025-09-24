@@ -1,58 +1,97 @@
 #include "state.h"
 #include "constants.h"
 
-__int64 state::getPossibleMoves(int cell, bool onlyAttacking)
+uint64_t state::getKingMoves(int cell) {
+	return kingMoves[cell] & ~(getPiece(cell) & constants::team::white ? whitePieces : blackPieces);
+}
+
+uint64_t state::getKnightMoves(int cell) {
+	return knightMoves[cell] & ~(getPiece(cell) & constants::team::white ? whitePieces : blackPieces);
+}
+
+uint64_t state::getRookMoves(int cell) {
+	uint64_t masked = occupied & rookMasks[cell];
+	int index = (masked * rookMagics[cell].magic) >> (64 - rookMagics[cell].shift);
+	return rookMoves[cell][index] & ~(getPiece(cell) & constants::team::white ? whitePieces : blackPieces);
+}
+
+uint64_t state::getBishopMoves(int cell) {
+	uint64_t masked = occupied & bishopMasks[cell];
+	int index = (masked * bishopMagics[cell].magic) >> (64 - bishopMagics[cell].shift);
+	return bishopMoves[cell][index] & ~(getPiece(cell) & constants::team::white ? whitePieces : blackPieces);
+}
+
+uint64_t state::getQueenMoves(int cell) {
+	return getRookMoves(cell) | getBishopMoves(cell);
+}
+
+uint64_t state::getPawnMoves(int cell) {
+	uint64_t moves = 0;
+	if (getPiece(cell) & constants::team::white) {
+		uint64_t push = whitePawnPushes[cell];
+		if (!(occupied & push)) moves |= push;
+		if (push && !(occupied & whitePawnDoublePushes[cell])) moves |= whitePawnDoublePushes[cell];
+		moves |= whitePawnCaptures[cell] & (blackPieces | enPassant);
+	}
+	else {
+		uint64_t push = blackPawnPushes[cell];
+		if (!(occupied & push)) moves |= push;
+		if (push && !(occupied & blackPawnDoublePushes[cell])) moves |= blackPawnDoublePushes[cell];
+		moves |= blackPawnCaptures[cell] & (whitePieces | enPassant);
+	}
+	return moves;
+}
+
+uint64_t state::getPossibleMoves(int cell)
 {
-	__int64 possibleMoves = 0;
+	uint64_t possibleMoves = 0;
+	if (isEmpty(cell)) return possibleMoves;
 
-	bool isWhite = board[cell] & constants::team::white;
-	setCoordinates(cell);
+	uint64_t mask = 1ULL << cell;
+	bool isWhite = whitePieces & mask;
 
-	if (board[cell] & constants::piece::pawn) {
-		if (isWhite) {
-			if (!onlyAttacking && coordinates[1] == 1 && isEmpty(cell + width * 2))
-				setBB(possibleMoves, cell + width * 2);
-			if (!onlyAttacking && isEmpty(cell + width))
-				setBB(possibleMoves, cell + width);
-			if (coordinates[0] > 0 && (onlyAttacking || board[cell + width - 1] & constants::team::black || enPassantBlack == (cell + width - 1)))
-				setBB(possibleMoves, cell + width - 1);
-			if (coordinates[0] < width - 1 && (onlyAttacking || board[cell + width + 1] & constants::team::black || enPassantBlack == (cell + width + 1)))
-				setBB(possibleMoves, cell + width + 1);
+	if (isWhite) {
+		if (whitePawns & mask) {
+			possibleMoves = getPawnMoves(cell);
 		}
-		else {
-			if (!onlyAttacking && coordinates[1] == height - 2 && isEmpty(cell - width * 2))
-				setBB(possibleMoves, cell - width * 2);
-			if (!onlyAttacking && isEmpty(cell - width))
-				setBB(possibleMoves, cell - width);
-			if (coordinates[0] > 0 && (onlyAttacking || board[cell - width - 1] & constants::team::white || enPassantWhite == (cell - width - 1)))
-				setBB(possibleMoves, cell - width - 1);
-			if (coordinates[0] < width - 1 && (onlyAttacking || board[cell - width + 1] & constants::team::white || enPassantWhite == (cell - width + 1)))
-				setBB(possibleMoves, cell - width + 1);
+		if (whiteRooks & mask) {
+			possibleMoves = getRookMoves(cell);
 		}
-		goto end;
+		if (whiteKnights & mask) {
+			possibleMoves = getKnightMoves(cell);
+		}
+		if (whiteBishops & mask) {
+			possibleMoves = getBishopMoves(cell);
+		}
+		if (whiteQueens & mask) {
+			possibleMoves = getQueenMoves(cell);
+		}
+		if (whiteKing & mask) {
+			possibleMoves = getKingMoves(cell);
+		}
+	}
+	else {
+		if (blackPawns & mask) {
+			possibleMoves = getPawnMoves(cell);
+		}
+		if (blackRooks & mask) {
+			possibleMoves = getRookMoves(cell);
+		}
+		if (blackKnights & mask) {
+			possibleMoves = getKnightMoves(cell);
+		}
+		if (blackBishops & mask) {
+			possibleMoves = getBishopMoves(cell);
+		}
+		if (blackQueens & mask) {
+			possibleMoves = getQueenMoves(cell);
+		}
+		if (blackKing & mask) {
+			possibleMoves = getKingMoves(cell);
+		}
 	}
 
-	if (board[cell] & constants::piece::king) {
-		int moves[8][2] = { {1,1}, {1,0}, {1,-1}, {0,-1}, {-1,-1}, {-1,0}, {-1,1}, {0,1} };
-
-		for (int i = 0; i < 8; i++) {
-			int nx = coordinates[0] + moves[i][0];
-			int ny = coordinates[1] + moves[i][1];
-
-			if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-				int destination = ny * width + nx;
-
-				if (isWhite) {
-					if ((onlyAttacking || !(board[destination] & constants::team::white)) && !getBB(onTakeBlack, destination))
-						setBB(possibleMoves, destination);
-				}
-				else {
-					if ((onlyAttacking || !(board[destination] & constants::team::black)) && !getBB(onTakeWhite, destination))
-						setBB(possibleMoves, destination);
-				}
-			}
-		}
-
+	/*if (board[cell] & constants::piece::king) {
 		//Castle
 		if (isWhite && !whiteKingCastle) {
 			int oo = 6;
@@ -79,107 +118,79 @@ __int64 state::getPossibleMoves(int cell, bool onlyAttacking)
 			}
 
 		goto end;
-	}
-
-	if (board[cell] & constants::piece::knight) {
-		int moves[8][2] = { {1,2}, {2,1}, {2,-1}, {1,-2}, {-1,-2}, {-2,-1}, {-2,1}, {-1,2} };
-
-		for (int i = 0; i < 8; i++) {
-			int nx = coordinates[0] + moves[i][0];
-			int ny = coordinates[1] + moves[i][1];
-
-			if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-				int destination = ny * width + nx;
-
-				if (isWhite) {
-					if (onlyAttacking || !(board[destination] & constants::team::white))
-						setBB(possibleMoves, destination);
-				}
-				else {
-					if (onlyAttacking || !(board[destination] & constants::team::black))
-						setBB(possibleMoves, destination);
-				}
-			}
-		}
-		goto end;
-	}
-
-	if (board[cell] & constants::piece::bishop || board[cell] & constants::piece::queen) {
-		const int directions[4][2] = {
-			{1, 1}, {1, -1}, {-1, -1}, {-1, 1}
-		};
-
-		for (int dir = 0; dir < 4; dir++) {
-			slidingPiecesMoves(cell, coordinates, possibleMoves, directions[dir][0], directions[dir][1], onlyAttacking);
-		}
-
-		if (!(board[cell] & constants::piece::queen)) {
-			goto end;
-		}
-	}
-
-	if (board[cell] & constants::piece::rook || board[cell] & constants::piece::queen) {
-		const int directions[4][2] = {
-			{1, 0}, {0, -1}, {-1, 0}, {0, 1}
-		};
-
-		for (int dir = 0; dir < 4; dir++) {
-			slidingPiecesMoves(cell, coordinates, possibleMoves, directions[dir][0], directions[dir][1], onlyAttacking);
-		}
-
-		if (!(board[cell] & constants::piece::queen)) {
-			goto end;
-		}
-	}
-
-end:
-	if (!onlyAttacking) possibleMoves = checkPossibleMoves(cell, possibleMoves);
+	}*/
 
 	return possibleMoves;
 }
 
-__int64 state::getPossibleMoves(int cell) {
-	return getPossibleMoves(cell, false);
-}
+uint64_t state::getAllAttacks(bool isWhite) {
+	uint64_t attacks = 0;
+	if (isWhite) {
+		_BITBOARD_FOR_BEGIN(whitePawns)
+			int i = _BITBOARD_GET_FIRST_1(whitePawns)
+			attacks |= whitePawnCaptures[i];
+		_BITBOARD_FOR_END(whitePawns);
 
-std::vector<bool> state::getPossibleMovesVector(int cell) {
-	__int64 pm = getPossibleMoves(cell, false);
-	std::vector<bool> possibleMoves;
-	_BITBOARD_FOR_BEGIN(pm)
-		int i = _BITBOARD_GET_FIRST_1(pm)
-		possibleMoves.push_back(i);
-	_BITBOARD_FOR_END(pm)
-	return possibleMoves;
-}
+		_BITBOARD_FOR_BEGIN(whiteRooks)
+			int i = _BITBOARD_GET_FIRST_1(whiteRooks)
+			attacks |= getRookMoves(i);
+		_BITBOARD_FOR_END(whiteRooks);
 
-void state::slidingPiecesMoves(int cell, int* coordinates, __int64 &possibleMoves, int moveX, int moveY, bool onlyAttacking) {
-	bool isWhite = board[cell] & constants::team::white;
-	for (int i = 1; ; i++) {
-		int nx = coordinates[0] + moveX * i;
-		int ny = coordinates[1] + moveY * i;
+		_BITBOARD_FOR_BEGIN(whiteKnights)
+			int i = _BITBOARD_GET_FIRST_1(whiteKnights)
+			attacks |= knightMoves[i];
+		_BITBOARD_FOR_END(whiteKnights);
 
-		if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-			int destination = ny * width + nx;
+		_BITBOARD_FOR_BEGIN(whiteBishops)
+			int i = _BITBOARD_GET_FIRST_1(whiteBishops)
+			attacks |= getBishopMoves(i);
+		_BITBOARD_FOR_END(whiteBishops);
 
-			if (!isEmpty(destination)) {
-				if (onlyAttacking || (isWhite && board[destination] & constants::team::black))
-					setBB(possibleMoves, destination);
-				if (onlyAttacking || (!isWhite && board[destination] & constants::team::white))
-					setBB(possibleMoves, destination);
-				if ((isWhite && board[destination] != (constants::team::black | constants::piece::king)) ||
-					(!isWhite && board[destination] != (constants::team::white | constants::piece::king))) break;
-			}
-			else {
-				setBB(possibleMoves, destination);
-			}
-		}
-		else {
-			break;
-		}
+		_BITBOARD_FOR_BEGIN(whiteQueens)
+			int i = _BITBOARD_GET_FIRST_1(whiteQueens)
+			attacks |= getQueenMoves(i);
+		_BITBOARD_FOR_END(whiteQueens);
+
+		_BITBOARD_FOR_BEGIN(whiteKing)
+			int i = _BITBOARD_GET_FIRST_1(whiteKing)
+			attacks |= kingMoves[i];
+		_BITBOARD_FOR_END(whiteKing);
+	}
+	else {
+		_BITBOARD_FOR_BEGIN(blackPawns)
+			int i = _BITBOARD_GET_FIRST_1(blackPawns)
+			attacks |= blackPawnCaptures[i];
+		_BITBOARD_FOR_END(blackPawns);
+
+		_BITBOARD_FOR_BEGIN(blackRooks)
+			int i = _BITBOARD_GET_FIRST_1(blackRooks)
+			attacks |= getRookMoves(i);
+		_BITBOARD_FOR_END(blackRooks);
+
+		_BITBOARD_FOR_BEGIN(blackKnights)
+			int i = _BITBOARD_GET_FIRST_1(blackKnights)
+			attacks |= knightMoves[i];
+		_BITBOARD_FOR_END(blackKnights);
+
+		_BITBOARD_FOR_BEGIN(blackBishops)
+			int i = _BITBOARD_GET_FIRST_1(blackBishops)
+			attacks |= getBishopMoves(i);
+		_BITBOARD_FOR_END(blackBishops);
+
+		_BITBOARD_FOR_BEGIN(blackQueens)
+			int i = _BITBOARD_GET_FIRST_1(blackQueens)
+			attacks |= getQueenMoves(i);
+		_BITBOARD_FOR_END(blackQueens);
+
+		_BITBOARD_FOR_BEGIN(blackKing)
+			int i = _BITBOARD_GET_FIRST_1(blackKing)
+			attacks |= kingMoves[i];
+		_BITBOARD_FOR_END(blackKing);
 	}
 }
 
-bool state::canCastle(int king, int rook, int kingDest, int rookDest, __int64 attacked) {
+/*
+bool state::canCastle(int king, int rook, int kingDest, int rookDest, uint64_t attacked) {
 	if (getBB(movedPieces, king)) return false;
 	if (getBB(attacked, king)) return false;
 	if (rook < 0 || getBB(movedPieces, rook)) return false;
@@ -203,9 +214,9 @@ bool state::canCastle(int king, int rook, int kingDest, int rookDest, __int64 at
 	return canCastle;
 }
 
-__int64 state::checkPossibleMoves(int cell, __int64 possibleMoves) {
+uint64_t state::checkPossibleMoves(int cell, uint64_t possibleMoves) {
 	checkingPosition++;
-	__int64 ret = possibleMoves;
+	uint64_t ret = possibleMoves;
 	bool isWhite = board[cell] & constants::team::white;
 	_BITBOARD_FOR_BEGIN(possibleMoves)
 		int i = _BITBOARD_GET_FIRST_1(possibleMoves)
@@ -219,11 +230,11 @@ __int64 state::checkPossibleMoves(int cell, __int64 possibleMoves) {
 	return ret;
 }
 
-bool state::hasAnyLegalMove(__int8 team) {
+bool state::hasAnyLegalMove(int team) {
 	checkingPosition++;
 	for (int i = 0; i < totalCells; i++) {
 		if (!(board[i] & team)) continue;
-		__int64 possibleMoves = getPossibleMoves(i);
+		uint64_t possibleMoves = getPossibleMoves(i);
 		_BITBOARD_FOR_BEGIN(possibleMoves)
 			int j = _BITBOARD_GET_FIRST_1(possibleMoves)
 			if (!makeMove(i, j)) continue;
@@ -313,29 +324,4 @@ void state::handleSpecialMoves(int cellStart, int cellEnd) {
 		}
 	}
 }
-
-bool state::makeMove(int cellStart, int cellEnd) {
-#ifndef _DEBUG
-	if (!checkingPosition && !(board[cellStart] & turn)) return false;
-#endif
-	if (isEnded) return false;
-
-	saveMove(cellStart, cellEnd);
-
-	handleSpecialMoves(cellStart, cellEnd);
-
-	setBB(movedPieces, cellStart);
-	setBB(movedPieces, cellEnd);
-
-	board[cellEnd] = board[cellStart];
-	board[cellStart] = constants::piece::empty;
-
-	turn = turn == constants::team::white ? constants::team::black : constants::team::white;
-
-	updateBoard();
-
-	//if (turn == constants::team::black && bestMove[0] + bestMove[1] >= 0)
-	//	makeMove(bestMove[0], bestMove[1]);
-
-	return true;
-}
+*/
