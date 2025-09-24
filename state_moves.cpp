@@ -6,8 +6,7 @@ __int64 state::getPossibleMoves(int cell, bool onlyAttacking)
 	__int64 possibleMoves = 0;
 
 	bool isWhite = board[cell] & constants::team::white;
-	int* coordinates;
-	coordinates = getCoordinate(cell);
+	setCoordinates(cell);
 
 	if (board[cell] & constants::piece::pawn) {
 		if (isWhite) {
@@ -136,7 +135,6 @@ __int64 state::getPossibleMoves(int cell, bool onlyAttacking)
 end:
 	if (!onlyAttacking) possibleMoves = checkPossibleMoves(cell, possibleMoves);
 
-	free(coordinates);
 	return possibleMoves;
 }
 

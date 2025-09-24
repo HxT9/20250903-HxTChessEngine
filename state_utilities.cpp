@@ -123,11 +123,9 @@ __int8 state::getCell(char column, int row) {
 	return board[(row - 1) * width + column];
 }
 
-int* state::getCoordinate(int cell) {
-	int* coordinates = new int[2];
+int* state::setCoordinates(int cell) {
 	coordinates[0] = cell % width;
 	coordinates[1] = cell / width;
-	return coordinates;
 }
 
 bool state::isEmpty(int cell) {

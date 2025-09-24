@@ -52,6 +52,9 @@ public:
 
 	std::stack<moveData> moves;
 
+	//allocations
+	int coordinates[2] = { -1, -1 };
+
 	state();
 	state(state* toCopy);
 	state(state &toCopy) = default;
@@ -68,7 +71,7 @@ public:
 	void copyBoardFrom(state* toCopy);
 	void initBoard();
 	__int8 getCell(char column, int row);
-	int* getCoordinate(int cell);
+	int* setCoordinates(int cell);
 	bool isEmpty(int cell);
 	//BitBoardUtilities
 	bool getBB(__int64& data, int i);
