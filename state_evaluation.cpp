@@ -1,6 +1,5 @@
 #include "state.h"
 #include "constants.h"
-#include "nTreeNode.h"
 #include <algorithm>
 #include <iterator>
 #include <thread>
@@ -74,7 +73,7 @@ float state::evaluate()
 					}
 				if (passed) temp += vPassedPawn;
 
-				if (!onTakeWhite.get(i))
+				if (!getBB(onTakeWhite, i))
 					temp += vSinglePawn;
 
 				temp += vPawnTableWhite[i];
@@ -90,7 +89,7 @@ float state::evaluate()
 					}
 				if (passed) temp += vPassedPawn;
 
-				if (!onTakeBlack.get(i))
+				if (!getBB(onTakeBlack, i))
 					temp += vSinglePawn;
 
 				temp += vPawnTableBlack[i];
@@ -98,16 +97,16 @@ float state::evaluate()
 			break;
 		}
 
-		temp += vMobility * getPossibleMoves(i).size();
+		temp += vMobility * __popcnt64(getPossibleMoves(i));
 
 		if ((isWhite && whiteKingCastle) || (!isWhite && blackKingCastle))
 			temp += vCastle;
 
 		if (isWhite)
-			if (onTakeWhite.get(blackKing) && !hasAnyLegalMove(constants::team::black))
+			if (getBB(onTakeWhite, blackKing) && !hasAnyLegalMove(constants::team::black))
 				temp += vCheckMate;
 			else
-				if (onTakeBlack.get(whiteKing) && !hasAnyLegalMove(constants::team::white))
+				if (getBB(onTakeBlack, whiteKing) && !hasAnyLegalMove(constants::team::white))
 					temp += vCheckMate;
 
 		isWhite ? whiteScore += temp : blackScore += temp;
@@ -125,12 +124,14 @@ float state::search(state* s, int depth, int alpha, int beta, bool isWhite) {
 	for (int cell = 0; cell < totalCells; cell++) {
 		if (!s->isEmpty(cell) && ((isWhite && s->board[cell] & constants::team::white) ||
 			(!isWhite && s->board[cell] & constants::team::black))) {
-			auto moves = s->getPossibleMoves(cell);
-			for (auto dest : moves) {
-				
+			__int64 moves = s->getPossibleMoves(cell);
+
+			_BITBOARD_FOR_BEGIN(moves)
+				int dest = _BITBOARD_GET_FIRST_1(moves)
+
 				if (!s->makeMove(cell, dest)) continue;
 				float val = search(s, depth - 1, alpha, beta, !isWhite);
-				s->restorePrevious();
+				s->undoMove();
 
 				if (isWhite) {
 					best = std::max(best, val);
@@ -143,7 +144,8 @@ float state::search(state* s, int depth, int alpha, int beta, bool isWhite) {
 
 				if (beta <= alpha)
 					return best; // potatura
-			}
+
+			_BITBOARD_FOR_END(moves);
 		}
 	}
 	return best;

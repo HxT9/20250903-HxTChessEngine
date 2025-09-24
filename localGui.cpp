@@ -15,7 +15,7 @@ state* s;
 ID3D11ShaderResourceView* pieceTextures[13];
 int selectedCell = -1;
 
-bitBoard possibleMoves;
+__int64 possibleMoves;
 
 int initDraw();
 
@@ -56,7 +56,7 @@ void drawChessBoard() {
                 if (tex ) ImGui::GetWindowDrawList()->AddImage(tex, topLeft, bottomRight);
             }
 
-            if (possibleMoves.get(i)) {
+            if (s->getBB(possibleMoves, i)) {
                 ImTextureID tex = (ImTextureID)pieceTextures[12];
                 ImGui::GetWindowDrawList()->AddImage(tex, topLeft, bottomRight);
             }
@@ -79,14 +79,14 @@ void drawChessBoard() {
             sprintf_s(id, "cell_%d", i);
             ImGui::SetCursorScreenPos(topLeft);
             if (ImGui::InvisibleButton(id, ImVec2{ cellSize, cellSize })) {
-                if (selectedCell >= 0 && !s->isEmpty(selectedCell) && possibleMoves.get(i)) {
+                if (selectedCell >= 0 && !s->isEmpty(selectedCell) && s->getBB(possibleMoves, i)) {
                     s->makeMove(selectedCell, i);
                     selectedCell = -1;
-                    possibleMoves.data = 0;
+                    possibleMoves = 0;
                 }
                 else {
                     selectedCell = i;
-                    possibleMoves = s->getPossibleMovesBB(selectedCell);
+                    possibleMoves = s->getPossibleMoves(selectedCell);
                 }
             }
         }
@@ -97,7 +97,7 @@ void handleKeyDown(MSG msg) {
     switch (msg.wParam) {
     case 'Z':
         if (GetKeyState(VK_CONTROL) & 0x8000)
-            s->restorePrevious();
+            s->undoMove();
     }
 }
 

@@ -30,74 +30,37 @@ std::string state::toString()
 	return ret;
 }
 
-const char* state::getUnicodePiece(int i)
-{
-	if (isEmpty(i)) return u8"\0";
-
-	if (board[i] & constants::piece::pawn)
-		return board[i] & constants::team::white ? u8"♙" : u8"♟";
-	if (board[i] & constants::piece::rook)
-		return board[i] & constants::team::white ? u8"♖" : u8"♜";
-	if (board[i] & constants::piece::knight)
-		return board[i] & constants::team::white ? u8"♘" : u8"♞";
-	if (board[i] & constants::piece::bishop)
-		return board[i] & constants::team::white ? u8"♗" : u8"♝";
-	if (board[i] & constants::piece::queen)
-		return board[i] & constants::team::white ? u8"♕" : u8"♛";
-	if (board[i] & constants::piece::king)
-		return board[i] & constants::team::white ? u8"♔" : u8"♚";
-
-	return u8"\0";
+void state::saveMove(int from, int to) {
+	moveData m;
+	m.from_i = from;
+	m.from_d = board[from];
+	m.to_i = to;
+	m.to_d = board[to];
+	m.turn = turn;
+	m.enPassantWhite = enPassantWhite;
+	m.enPassantBlack = enPassantBlack;
+	m.movedPieces = movedPieces;
+	m.whiteKingCastle = whiteKingCastle;
+	m.blackKingCastle = blackKingCastle;
+	moves.push(m);
 }
 
-void state::copyToPrevious()
-{
-	managedData* temp = new managedData();
-	copyManagedData(temp);
-	previousState = temp;
-	previousLevels++;
-}
+void state::undoMove() {
+	if (!moves.size()) return;
+	moveData m = moves.top();
+	board[m.from_i] = m.from_d;
+	board[m.to_i] = m.to_d;
+	if (m.other1_i >= 0) board[m.other1_i] = m.other1_d;
+	if (m.other2_i >= 0) board[m.other2_i] = m.other2_d;
+	turn = m.turn;
+	enPassantWhite = m.enPassantWhite;
+	enPassantBlack = m.enPassantBlack;
+	movedPieces = m.movedPieces;
+	whiteKingCastle = m.whiteKingCastle;
+	blackKingCastle = m.blackKingCastle;
+	moves.pop();
 
-void state::restorePrevious() {
-	void* to_del = previousState;
-	if(previousState)
-		restoreManagedData(previousState);
-	delete to_del;
-	previousLevels--;
-}
-
-void state::copyManagedData(managedData* mD) {
-#ifdef _USE_VECTORBOARD
-	mD->board = board;
-#else
-	std::copy(std::begin(board), std::end(board), std::begin(mD->board));
-#endif
-	mD->enPassantWhite = enPassantWhite;
-	mD->enPassantBlack = enPassantBlack;
-	mD->movedPieces = movedPieces;
-	mD->whiteKingCastle = whiteKingCastle;
-	mD->blackKingCastle = blackKingCastle;
-	mD->turn = turn;
-	mD->checkingPosition = checkingPosition;
-	mD->previousState = previousState;
-	mD->previousLevels = previousLevels;
-}
-
-void state::restoreManagedData(managedData* mD) {
-#ifdef _USE_VECTORBOARD
-	board = mD->board;
-#else
-	std::copy(std::begin(mD->board), std::end(mD->board), std::begin(board));
-#endif
-	enPassantWhite = mD->enPassantWhite;
-	enPassantBlack = mD->enPassantBlack;
-	movedPieces = mD->movedPieces;
-	whiteKingCastle = mD->whiteKingCastle;
-	blackKingCastle = mD->blackKingCastle;
-	turn = mD->turn;
-	checkingPosition = mD->checkingPosition;
-	previousState = mD->previousState;
-	previousLevels = mD->previousLevels;
+	updateBoard(true);
 }
 
 void state::copyBoardFrom(state* toCopy)
@@ -168,3 +131,7 @@ int* state::getCoordinate(int cell) {
 bool state::isEmpty(int cell) {
 	return board[cell] == constants::piece::empty;
 }
+
+bool state::getBB(__int64 &data, int i) { return (data >> i) & 1; }
+void state::setBB(__int64 &data, int i) { data |= (1ULL << i); }
+void state::resetBB(__int64& data, int i) { data &= ~(1ULL << i); }

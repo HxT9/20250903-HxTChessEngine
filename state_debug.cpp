@@ -20,7 +20,7 @@ void state::temp(std::vector<__int64> args) {
 		break;
 	}
 
-	std::vector<__int8> pm;
+	__int64 pm;
 	state* s = new state((state*)args[1]);
 
 	std::vector<__int64> new_args(2);
@@ -30,14 +30,15 @@ void state::temp(std::vector<__int64> args) {
 		if (s->isEmpty(i) || !(s->board[i] & s->turn)) continue;
 
 		pm = s->getPossibleMoves(i);
-		for (int j = 0; j < pm.size(); j++) {
+		_BITBOARD_FOR_BEGIN(pm)
+			int j = _BITBOARD_GET_FIRST_1(pm)
 			state* s2 = new state(s);
 			s2->checkingPosition = true;
-			s2->makeMove(i, pm[j]);
+			s2->makeMove(i, j);
 			new_args[1] = (__int64)s2;
 			temp(new_args);
 			delete s2;
-		}
+		_BITBOARD_FOR_END(pm)
 	}
 }
 
@@ -60,7 +61,7 @@ void state::temp2(std::vector<__int64> args) {
 		break;
 	}
 
-	std::vector<__int8> pm;
+	__int64 pm;
 
 	args[0] -= 1;
 
@@ -68,12 +69,12 @@ void state::temp2(std::vector<__int64> args) {
 		if (isEmpty(i) || !(board[i] & turn)) continue;
 
 		pm = getPossibleMoves(i);
-		for (int j = 0; j < pm.size(); j++) {
-			managedData lm;
-			copyManagedData(&lm);
-			makeMove(i, pm[j]);
+		_BITBOARD_FOR_BEGIN(pm)
+			int j = _BITBOARD_GET_FIRST_1(pm)
+
+			makeMove(i, j);
 			temp2(args);
-			restoreManagedData(&lm);
-		}
+			undoMove();
+		_BITBOARD_FOR_END(pm)
 	}
 }

@@ -80,9 +80,6 @@
     <ClInclude Include="stb_image.h">
       <Filter>ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="bitBoard.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="nTreeNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>

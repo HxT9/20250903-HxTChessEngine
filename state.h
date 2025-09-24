@@ -1,37 +1,37 @@
 #pragma once
 #include <string>
 #include <vector>
-#include "bitBoard.h"
+#include <stack>
 
 #define _USE_VECTORBOARD
+
+#define _BITBOARD_FOR_BEGIN(bb) while(bb) {
+#define _BITBOARD_GET_FIRST_1(bb) _tzcnt_u64(bb);
+#define _BITBOARD_FOR_END(bb) bb &= bb - 1;}
 
 const int whiteOOR = 7, whiteOOOR = 0, blackOOR = 63, blackOOOR = 56;
 const int whiteOO = 6, whiteOOO = 2, blackOO = 62, blackOOO = 58;
 
-struct managedData {
-#ifdef _USE_VECTORBOARD
-	std::vector<__int8> board;
-#else
-	__int8 board[64];
-#endif
-	bitBoard enPassantWhite;
-	bitBoard enPassantBlack;
-	bitBoard movedPieces;
-	bool whiteKingCastle, blackKingCastle;
+struct moveData {
+	int from_i, to_i;
+	__int8 from_d, to_d;
+	int other1_i = -1, other2_i = -1;
+	__int8 other1_d, other2_d;
 	__int8 turn;
-	bool checkingPosition;
-	managedData* previousState;
-	int previousLevels = 0;
+	int enPassantWhite;
+	int enPassantBlack;
+	__int64 movedPieces;
+	bool whiteKingCastle, blackKingCastle;
 };
 
 class state {
 public:
 	//Fixed
-	int width = 8, height = 8, totalCells = width * height;
+	const int width = 8, height = 8, totalCells = width * height;
 	
 	//Calculated with updateBoard
-	bitBoard onTakeWhite;
-	bitBoard onTakeBlack;
+	__int64 onTakeWhite;
+	__int64 onTakeBlack;
 	int whiteKing = 4, blackKing = 60;
 	bool isEnded = false;
 
@@ -41,45 +41,47 @@ public:
 #else
 	__int8 board[64];
 #endif
-	bitBoard enPassantWhite;
-	bitBoard enPassantBlack;
-	bitBoard movedPieces;
-	bool whiteKingCastle = false, blackKingCastle = false;
 	__int8 turn = 0;
+	int enPassantWhite;
+	int enPassantBlack;
+	__int64 movedPieces;
+	bool whiteKingCastle = false, blackKingCastle = false;
 	bool checkingPosition = false;
-	managedData* previousState;
-	int previousLevels = 0;
+
+	std::stack<moveData> moves;
 
 	state();
 	state(state* toCopy);
 	state(state &toCopy) = default;
 	~state();
 	void init();
-	void updateBoard();
+	void updateBoard(bool lightUpdate = false);
 	void end(__int8 teamWin, __int8 endCause);
 
 	//utilities
 	std::string toString();
 	const char* getUnicodePiece(int i);
-	void copyToPrevious();
-	void restorePrevious();
-	void copyManagedData(managedData* mD);
-	void restoreManagedData(managedData* mD);
+	void saveMove(int from, int to);
+	void undoMove();
 	void copyBoardFrom(state* toCopy);
 	void initBoard();
 	__int8 getCell(char column, int row);
 	int* getCoordinate(int cell);
 	bool isEmpty(int cell);
+	//BitBoardUtilities
+	bool getBB(__int64& data, int i);
+	void setBB(__int64& data, int i);
+	void resetBB(__int64& data, int i);
 
 	//moves
 	state* checkPossibleMovesState = nullptr;
 	state* hasAnyLegalMoveState = nullptr;
-	std::vector<__int8> getPossibleMoves(int cell, bool onlyAttacking);
-	std::vector<__int8> checkPossibleMoves(int cell, std::vector<__int8> possibleMoves);
-	std::vector<__int8> getPossibleMoves(int cell);
-	bitBoard getPossibleMovesBB(int cell);
-	bool canCastle(int king, int rook, int kingDest, int rookDest, bitBoard attacked);
-	void slidingPiecesMoves(int cell, int* coordinates, std::vector<__int8>& possibleMoves, int moveX, int moveY, bool onlyAttacking);
+	__int64 getPossibleMoves(int cell, bool onlyAttacking);
+	__int64 checkPossibleMoves(int cell, __int64 possibleMoves);
+	__int64 getPossibleMoves(int cell);
+	std::vector<bool> getPossibleMovesVector(int cell);
+	bool canCastle(int king, int rook, int kingDest, int rookDest, __int64 attacked);
+	void slidingPiecesMoves(int cell, int* coordinates, __int64 &possibleMoves, int moveX, int moveY, bool onlyAttacking);
 	bool hasAnyLegalMove(__int8 team);
 	void handleSpecialMoves(int cellStart, int cellEnd);
 	bool makeMove(int cellStart, int cellEnd);

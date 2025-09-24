@@ -112,7 +112,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>Default</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>Default</LanguageStandard_C>
       <AdditionalIncludeDirectories>G:\Home\Coding\repos\20250903 HxTChessEngine\imgui</AdditionalIncludeDirectories>
     </ClCompile>
@@ -160,11 +160,9 @@
     <ClCompile Include="state_utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bitBoard.h" />
     <ClInclude Include="constants.h" />
     <ClInclude Include="interfaces.h" />
     <ClInclude Include="localGui.h" />
-    <ClInclude Include="nTreeNode.h" />
     <ClInclude Include="state.h" />
     <ClInclude Include="stb_image.h" />
   </ItemGroup>
