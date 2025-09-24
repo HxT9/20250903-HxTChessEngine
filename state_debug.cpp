@@ -33,7 +33,7 @@ void state::temp(std::vector<__int64> args) {
 		_BITBOARD_FOR_BEGIN(pm)
 			int j = _BITBOARD_GET_FIRST_1(pm)
 			state* s2 = new state(s);
-			s2->checkingPosition = true;
+			s2->checkingPosition++;
 			s2->makeMove(i, j);
 			new_args[1] = (__int64)s2;
 			temp(new_args);

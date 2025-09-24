@@ -21,6 +21,8 @@ struct moveData {
 	int enPassantWhite;
 	int enPassantBlack;
 	__int64 movedPieces;
+	__int64 onTakeWhite;
+	__int64 onTakeBlack;
 	bool whiteKingCastle, blackKingCastle;
 };
 
@@ -30,8 +32,6 @@ public:
 	const int width = 8, height = 8, totalCells = width * height;
 	
 	//Calculated with updateBoard
-	__int64 onTakeWhite;
-	__int64 onTakeBlack;
 	int whiteKing = 4, blackKing = 60;
 	bool isEnded = false;
 
@@ -45,8 +45,10 @@ public:
 	int enPassantWhite;
 	int enPassantBlack;
 	__int64 movedPieces;
+	__int64 onTakeWhite;
+	__int64 onTakeBlack;
 	bool whiteKingCastle = false, blackKingCastle = false;
-	bool checkingPosition = false;
+	int checkingPosition = 0;
 
 	std::stack<moveData> moves;
 
@@ -55,7 +57,7 @@ public:
 	state(state &toCopy) = default;
 	~state();
 	void init();
-	void updateBoard(bool lightUpdate = false);
+	void updateBoard();
 	void end(__int8 teamWin, __int8 endCause);
 
 	//utilities
@@ -74,8 +76,6 @@ public:
 	void resetBB(__int64& data, int i);
 
 	//moves
-	state* checkPossibleMovesState = nullptr;
-	state* hasAnyLegalMoveState = nullptr;
 	__int64 getPossibleMoves(int cell, bool onlyAttacking);
 	__int64 checkPossibleMoves(int cell, __int64 possibleMoves);
 	__int64 getPossibleMoves(int cell);

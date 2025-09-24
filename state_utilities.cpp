@@ -40,6 +40,8 @@ void state::saveMove(int from, int to) {
 	m.enPassantWhite = enPassantWhite;
 	m.enPassantBlack = enPassantBlack;
 	m.movedPieces = movedPieces;
+	m.onTakeWhite = onTakeWhite;
+	m.onTakeBlack = onTakeBlack;
 	m.whiteKingCastle = whiteKingCastle;
 	m.blackKingCastle = blackKingCastle;
 	moves.push(m);
@@ -56,11 +58,11 @@ void state::undoMove() {
 	enPassantWhite = m.enPassantWhite;
 	enPassantBlack = m.enPassantBlack;
 	movedPieces = m.movedPieces;
+	onTakeWhite = m.onTakeWhite;
+	onTakeBlack = m.onTakeBlack;
 	whiteKingCastle = m.whiteKingCastle;
 	blackKingCastle = m.blackKingCastle;
 	moves.pop();
-
-	updateBoard(true);
 }
 
 void state::copyBoardFrom(state* toCopy)

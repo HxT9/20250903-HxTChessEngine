@@ -160,11 +160,11 @@ float state::search(state* s, int depth, int alpha, int beta, bool isWhite) {
 
 			auto moves = getPossibleMoves(cell);
 			for (auto dest : moves) {
-				checkingPosition = true;
+				checkingPosition++;
 				if (!makeMove(cell, dest)) continue;
 				float val = search(this, depth - 1, -1e9, 1e9, turn == constants::team::black);
 				restorePrevious();
-				checkingPosition = false;
+				checkingPosition--;
 
 				if (val > bestVal) {
 					bestVal = val;
@@ -189,12 +189,12 @@ void state::calcBestMove(int depth) {
 	std::vector<__int64> args(2);
 	args[0] = depth + 1;
 	args[1] = (__int64)this;
-	checkingPosition = true;
+	checkingPosition++;
 	temp(args);
 	dbg_level0 = 0;
 	dbg_level1 = 0;
 	dbg_level2 = 0;
 	dbg_level3 = 0;
 	temp2(args);
-	checkingPosition = false;
+	checkingPosition--;
 }

@@ -206,36 +206,43 @@ bool state::canCastle(int king, int rook, int kingDest, int rookDest, __int64 at
 }
 
 __int64 state::checkPossibleMoves(int cell, __int64 possibleMoves) {
+	checkingPosition++;
 	__int64 ret = possibleMoves;
 	bool isWhite = board[cell] & constants::team::white;
 	_BITBOARD_FOR_BEGIN(possibleMoves)
 		int i = _BITBOARD_GET_FIRST_1(possibleMoves)
-		checkPossibleMovesState->copyBoardFrom(this);
-		checkPossibleMovesState->makeMove(cell, i);
-		if ((isWhite && getBB(checkPossibleMovesState->onTakeBlack, checkPossibleMovesState->whiteKing)) || (!isWhite && getBB(checkPossibleMovesState->onTakeWhite, checkPossibleMovesState->blackKing)))
+		if (!makeMove(cell, i)) continue;
+		if ((isWhite && getBB(onTakeBlack, whiteKing)) || (!isWhite && getBB(onTakeWhite, blackKing)))
 			resetBB(ret, i);
+		undoMove();
 	_BITBOARD_FOR_END(possibleMoves)
+	checkingPosition--;
 
 	return ret;
 }
 
 bool state::hasAnyLegalMove(__int8 team) {
+	checkingPosition++;
 	for (int i = 0; i < totalCells; i++) {
 		if (!(board[i] & team)) continue;
 		__int64 possibleMoves = getPossibleMoves(i);
 		_BITBOARD_FOR_BEGIN(possibleMoves)
 			int j = _BITBOARD_GET_FIRST_1(possibleMoves)
-			if (!getBB(possibleMoves, j)) continue;
-			hasAnyLegalMoveState->copyBoardFrom(this);
-			hasAnyLegalMoveState->makeMove(i, j);
-			if (team == constants::team::white && !getBB(hasAnyLegalMoveState->onTakeBlack, hasAnyLegalMoveState->whiteKing)) {
+			if (!makeMove(i, j)) continue;
+			if (team == constants::team::white && !getBB(onTakeBlack, whiteKing)) {
+				undoMove();
+				checkingPosition--;
 				return true;
 			}
-			if (team == constants::team::black && !getBB(hasAnyLegalMoveState->onTakeWhite, hasAnyLegalMoveState->blackKing)) {
+			if (team == constants::team::black && !getBB(onTakeWhite, blackKing)) {
+				undoMove();
+				checkingPosition--;
 				return true;
 			}
+			undoMove();
 		_BITBOARD_FOR_END(possibleMoves)
 	}
+	checkingPosition--;
 	return false;
 }
 

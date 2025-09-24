@@ -6,31 +6,18 @@ state::state() {
 }
 
 state::state(state* toCopy) : state(*toCopy) {
-	checkPossibleMovesState = new state();
-	checkPossibleMovesState->checkingPosition = true;
-	hasAnyLegalMoveState = new state();
-	hasAnyLegalMoveState->checkingPosition = true;
 }
 
 state::~state() {
-	if (checkPossibleMovesState)
-		delete checkPossibleMovesState;
-	if (hasAnyLegalMoveState)
-		delete hasAnyLegalMoveState;
 }
 
 void state::init()
 {
-	checkPossibleMovesState = new state();
-	checkPossibleMovesState->checkingPosition = true;
-	hasAnyLegalMoveState = new state();
-	hasAnyLegalMoveState->checkingPosition = true;
-
 	initBoard();
 	updateBoard();
 }
 
-void state::updateBoard(bool lightUpdate) {
+void state::updateBoard() {
 	onTakeWhite = 0;
 	onTakeBlack = 0;
 
@@ -50,7 +37,7 @@ void state::updateBoard(bool lightUpdate) {
 		}
 	}
 
-	if (!checkingPosition && !lightUpdate) {
+	if (!checkingPosition) {
 		if (getBB(onTakeBlack, whiteKing)) {
 			if (!hasAnyLegalMove(constants::team::white))
 				end(constants::team::black, constants::endCause::checkmate);
