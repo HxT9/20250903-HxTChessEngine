@@ -3,6 +3,8 @@
 #include <random>
 #include <chrono>
 
+state_moves_generator_generatedMoves generatedMoves;
+
 void initKingMoves()
 {
 	int steps[8][2] = {
@@ -21,12 +23,12 @@ void initKingMoves()
 
 			// Check if destination is on board
 			if (newx >= 0 && newx < 8 && newy >= 0 && newy < 8) {
-				int dest = newx * 8 + newy;
+				int dest = newy * 8 + newx;
 				moves |= (1ULL << dest);
 			}
 		}
 
-		kingMoves[i] = moves;
+		generatedMoves.kingMoves[i] = moves;
 	}
 }
 
@@ -48,12 +50,12 @@ void initKnightMoves()
 
 			// Check if destination is on board
 			if (newx >= 0 && newx < 8 && newy >= 0 && newy < 8) {
-				int dest = newx * 8 + newy;
+				int dest = newy * 8 + newx;
 				moves |= (1ULL << dest);
 			}
 		}
 
-		knightMoves[i] = moves;
+		generatedMoves.knightMoves[i] = moves;
 	}
 }
 
@@ -69,7 +71,7 @@ void initRookMasks() {
 		for (int ny = y + 1; ny < 7; ny++) mask |= (1ULL << (ny * 8 + x));
 		for (int ny = y - 1; ny > 0; ny--) mask |= (1ULL << (ny * 8 + x));
 
-		rookMasks[i] = mask;
+		generatedMoves.rookMasks[i] = mask;
 	}
 }
 
@@ -86,7 +88,7 @@ void initBishopMasks() {
 			if (x - j > 0 && y - j > 0) mask |= (1ULL << ((y - j) * 8 + x - j));
 		}
 
-		bishopMasks[i] = mask;
+		generatedMoves.bishopMasks[i] = mask;
 	}
 }
 
@@ -103,7 +105,7 @@ uint64_t generateRookAttacks(int cell, uint64_t occupancy) {
 	}
 
 	// Left
-	for (int i = x - 1; i > 0; i--) {
+	for (int i = x - 1; i >= 0; i--) {
 		int sq = y * 8 + i;
 		attacks |= (1ULL << sq);
 		if (occupancy & (1ULL << sq)) break;
@@ -117,7 +119,7 @@ uint64_t generateRookAttacks(int cell, uint64_t occupancy) {
 	}
 
 	// Down 
-	for (int i = y - 1; i > 0; i--) {
+	for (int i = y - 1; i >= 0; i--) {
 		int sq = i * 8 + x;
 		attacks |= (1ULL << sq);
 		if (occupancy & (1ULL << sq)) break;
@@ -128,29 +130,35 @@ uint64_t generateRookAttacks(int cell, uint64_t occupancy) {
 
 uint64_t generateBishopAttacks(int cell, uint64_t occupancy) {
 	uint64_t attacks = 0;
+	int x = cell % 8;
+	int y = cell / 8;
 
-	// TopRight
-	for (int i = cell + 9; i < 64; i += 9) {
-		attacks |= (1ULL << i);
-		if (occupancy & (1ULL << i)) break;
+	// Northeast
+	for (int dx = 1, dy = 1; x + dx < 8 && y + dy < 8; dx++, dy++) {
+		int sq = (y + dy) * 8 + (x + dx);
+		attacks |= (1ULL << sq);
+		if (occupancy & (1ULL << sq)) break;
 	}
 
-	// DownRight
-	for (int i = cell - 7; i > 0; i -= 7) {
-		attacks |= (1ULL << i);
-		if (occupancy & (1ULL << i)) break;
+	// Southeast  
+	for (int dx = 1, dy = -1; x + dx < 8 && y + dy >= 0; dx++, dy--) {
+		int sq = (y + dy) * 8 + (x + dx);
+		attacks |= (1ULL << sq);
+		if (occupancy & (1ULL << sq)) break;
 	}
 
-	// TopLeft
-	for (int i = cell + 7; i < 64; i += 7) {
-		attacks |= (1ULL << i);
-		if (occupancy & (1ULL << i)) break;
+	// Southwest
+	for (int dx = -1, dy = -1; x + dx >= 0 && y + dy >= 0; dx--, dy--) {
+		int sq = (y + dy) * 8 + (x + dx);
+		attacks |= (1ULL << sq);
+		if (occupancy & (1ULL << sq)) break;
 	}
 
-	// DownLeft 
-	for (int i = cell - 9; i > 0; i -= 9) {
-		attacks |= (1ULL << i);
-		if (occupancy & (1ULL << i)) break;
+	// Northwest
+	for (int dx = -1, dy = 1; x + dx >= 0 && y + dy < 8; dx--, dy++) {
+		int sq = (y + dy) * 8 + (x + dx);
+		attacks |= (1ULL << sq);
+		if (occupancy & (1ULL << sq)) break;
 	}
 
 	return attacks;
@@ -181,11 +189,10 @@ uint64_t random64() {
 
 void initRookBishopMoves(bool isRook) {
 	for (int sq = 0; sq < 64; sq++) {
-		uint64_t mask = isRook ? rookMasks[sq] : bishopMasks[sq];
+		uint64_t mask = isRook ? generatedMoves.rookMasks[sq] : generatedMoves.bishopMasks[sq];
 		auto occupancies = getOccupancyVariations(mask);
 		int bits = __popcnt64(mask);
 
-		// Try random magic numbers until one works
 		bool found = false;
 		while (!found) {
 			uint64_t magic = random64() & random64() & random64();
@@ -207,21 +214,21 @@ void initRookBishopMoves(bool isRook) {
 
 			if (found) {
 				if (isRook) {
-					rookMagics[sq].magic = magic;
-					rookMagics[sq].shift = 64 - bits;
+					generatedMoves.rookMagics[sq].magic = magic;
+					generatedMoves.rookMagics[sq].shift = 64 - bits;
 					for (size_t i = 0; i < occupancies.size(); i++) {
 						uint64_t occ = occupancies[i];
-						uint64_t index = (occ * magic) >> rookMagics[sq].shift;
-						rookMoves[sq][index] = generateRookAttacks(sq, occ);
+						uint64_t index = (occ * magic) >> generatedMoves.rookMagics[sq].shift;
+						generatedMoves.rookMoves[sq][index] = generateRookAttacks(sq, occ);
 					}
 				}
 				else {
-					bishopMagics[sq].magic = magic;
-					bishopMagics[sq].shift = 64 - bits;
+					generatedMoves.bishopMagics[sq].magic = magic;
+					generatedMoves.bishopMagics[sq].shift = 64 - bits;
 					for (size_t i = 0; i < occupancies.size(); i++) {
 						uint64_t occ = occupancies[i];
-						uint64_t index = (occ * magic) >> rookMagics[sq].shift;
-						bishopMoves[sq][index] = generateRookAttacks(sq, occ);
+						uint64_t index = (occ * magic) >> generatedMoves.bishopMagics[sq].shift;
+						generatedMoves.bishopMoves[sq][index] = generateBishopAttacks(sq, occ);
 					}
 				}
 			}
@@ -234,32 +241,31 @@ void initPawnMoves() {
 		int x = i % 8;
 		int y = i / 8;
 
-		whitePawnPushes[i] = 0;
-		whitePawnDoublePushes[i] = 0;
-		whitePawnCaptures[i] = 0;
+		generatedMoves.whitePawnPushes[i] = 0;
+		generatedMoves.whitePawnDoublePushes[i] = 0;
+		generatedMoves.whitePawnCaptures[i] = 0;
 
 		if (y < 7) {
-			whitePawnPushes[i] |= (1ULL << (i + 8));
+			generatedMoves.whitePawnPushes[i] |= (1ULL << (i + 8));
 			if (y == 1) {
-				whitePawnDoublePushes[i] |= (1ULL << (i + 16));
+				generatedMoves.whitePawnDoublePushes[i] |= (1ULL << (i + 16));
 			}
 		}
-		if (x > 0) whitePawnCaptures[i] |= (1ULL << (i + 7));
-		if (x < 7) whitePawnCaptures[i] |= (1ULL << (i + 9));
+		if (x > 0) generatedMoves.whitePawnCaptures[i] |= (1ULL << (i + 7));
+		if (x < 7) generatedMoves.whitePawnCaptures[i] |= (1ULL << (i + 9));
 
-		blackPawnPushes[i] = 0;
-		blackPawnDoublePushes[i] = 0;
-		blackPawnCaptures[i] = 0;
+		generatedMoves.blackPawnPushes[i] = 0;
+		generatedMoves.blackPawnDoublePushes[i] = 0;
+		generatedMoves.blackPawnCaptures[i] = 0;
 
 		if (y > 0) {
-			blackPawnPushes[i] |= (1ULL << (i - 8));
+			generatedMoves.blackPawnPushes[i] |= (1ULL << (i - 8));
 			if (y == 6) {
-				blackPawnDoublePushes[i] |= (1ULL << (i - 16));
+				generatedMoves.blackPawnDoublePushes[i] |= (1ULL << (i - 16));
 			}
 		}
-		if (x > 0) blackPawnCaptures[i] |= (1ULL << (i - 9));
-		if (x < 7) blackPawnCaptures[i] |= (1ULL << (i - 7));
-
+		if (x > 0) generatedMoves.blackPawnCaptures[i] |= (1ULL << (i - 9));
+		if (x < 7) generatedMoves.blackPawnCaptures[i] |= (1ULL << (i - 7));
 	}
 }
 

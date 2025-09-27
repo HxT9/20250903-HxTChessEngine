@@ -2,10 +2,32 @@
 #include "constants.h"
 
 state::state() {
-	turn = constants::team::white;
-}
+	core.whitePawns = 0;
+	core.whiteRooks = 0;
+	core.whiteKnights = 0;
+	core.whiteBishops = 0;
+	core.whiteQueens = 0;
+	core.whiteKing = 0;
 
-state::state(state* toCopy) : state(*toCopy) {
+	core.blackPawns = 0;
+	core.blackRooks = 0;
+	core.blackKnights = 0;
+	core.blackBishops = 0;
+	core.blackQueens = 0;
+	core.blackKing = 0;
+
+	core.enPassant = 0;
+	core.onTakeWhite = 0;
+	core.onTakeBlack = 0;
+
+	core.isWhiteTurn = true;
+
+	core.whiteKingCastle = false;
+	core.whiteOORCanCastle = true;
+	core.whiteOOORCanCastle = true;
+	core.blackKingCastle = false;
+	core.blackOORCanCastle = true;
+	core.blackOOORCanCastle = true;
 }
 
 state::~state() {
@@ -13,78 +35,27 @@ state::~state() {
 
 void state::init()
 {
-	initBoard();
+	initPieces();
+	initAttacks();
+
 	updateBoard();
 }
 
 void state::updateBoard() {
-	onTakeWhite = 0;
-	onTakeBlack = 0;
 
-	for (int i = 0; i < totalCells; i++) {
-		if (board[i] & constants::team::white) {
-			if (board[i] & constants::piece::king) whiteKing = i;
-			uint64_t onTakeThis = getPossibleMoves(i, true);
-			onTakeWhite |= onTakeThis;
-			continue;
-		}
 
-		if (board[i] & constants::team::black) {
-			if (board[i] & constants::piece::king) blackKing = i;
-			uint64_t onTakeThis = getPossibleMoves(i, true);
-			onTakeBlack |= onTakeThis;
-			continue;
-		}
-	}
+	if (checkingPosition) return;
 
-	if (!checkingPosition) {
-		if (getBB(onTakeBlack, whiteKing)) {
-			if (!hasAnyLegalMove(constants::team::white))
-				end(constants::team::black, constants::endCause::checkmate);
-		}
+	//From here only when not checking position
 
-		if (getBB(onTakeWhite, blackKing)) {
-			if (!hasAnyLegalMove(constants::team::black))
-				end(constants::team::white, constants::endCause::checkmate);
-		}
+	if (!hasAnyLegalMove(!core.isWhiteTurn))
+		end(core.isWhiteTurn, constants::endCause::checkmate);
 
-		evaluation = evaluate();
-		printf_s("Evaluation: %f\n", evaluation / 100);
-
-		calcBestMove(2);
-	}
+	calcBestMove(6);
 }
 
-void state::end(int teamWin, int endCause) {
+void state::end(bool isWhiteWin, int endCause) {
 	isEnded = true;
-	printf_s("Winner: %i, EndCause: %i\n", teamWin, endCause);
+	printf_s("Winner: %s, EndCause: %i\n", isWhiteWin ? "White" : "Black", endCause);
 	return;
 }
-
-/*
-bool state::makeMove(int cellStart, int cellEnd) {
-#ifndef _DEBUG
-	if (!checkingPosition && !(board[cellStart] & turn)) return false;
-#endif
-	if (isEnded) return false;
-
-	saveMove(cellStart, cellEnd);
-
-	handleSpecialMoves(cellStart, cellEnd);
-
-	setBB(movedPieces, cellStart);
-	setBB(movedPieces, cellEnd);
-
-	board[cellEnd] = board[cellStart];
-	board[cellStart] = constants::piece::empty;
-
-	turn = turn == constants::team::white ? constants::team::black : constants::team::white;
-
-	updateBoard();
-
-	//if (turn == constants::team::black && bestMove[0] + bestMove[1] >= 0)
-	//	makeMove(bestMove[0], bestMove[1]);
-
-	return true;
-}
-*/

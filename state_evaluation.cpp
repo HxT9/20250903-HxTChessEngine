@@ -39,7 +39,7 @@ float state::evaluate()
 	
 	float whiteScore = 0, blackScore = 0;
 
-	for (int i = 0; i < totalCells; i++) {
+	/*for (int i = 0; i < totalCells; i++) {
 		if (isEmpty(i)) continue;
 		bool isWhite = board[i] & constants::team::white;
 		float temp = 0;
@@ -111,79 +111,14 @@ float state::evaluate()
 
 		isWhite ? whiteScore += temp : blackScore += temp;
 	}
+	*/
 
 	return whiteScore - blackScore;
 }
 
-float state::search(state* s, int depth, int alpha, int beta, bool isWhite) {
-	if (depth == 0 || s->isEnded)
-		return s->evaluate();
-
-	float best = isWhite ? -1e9 : 1e9;
-
-	for (int cell = 0; cell < totalCells; cell++) {
-		if (!s->isEmpty(cell) && ((isWhite && s->board[cell] & constants::team::white) ||
-			(!isWhite && s->board[cell] & constants::team::black))) {
-			uint64_t moves = s->getPossibleMoves(cell);
-
-			_BITBOARD_FOR_BEGIN(moves)
-				int dest = _BITBOARD_GET_FIRST_1(moves)
-
-				if (!s->makeMove(cell, dest)) continue;
-				float val = search(s, depth - 1, alpha, beta, !isWhite);
-				s->undoMove();
-
-				if (isWhite) {
-					best = std::max(best, val);
-					alpha = std::max(alpha, (int)val);
-				}
-				else {
-					best = std::min(best, val);
-					beta = std::min(beta, (int)val);
-				}
-
-				if (beta <= alpha)
-					return best; // potatura
-
-			_BITBOARD_FOR_END(moves);
-		}
-	}
-	return best;
-}
-
-/*void state::calcBestMove(int depth) {
-	float bestVal = -1e9;
-	int move[2] = { -1, -1 };
-
-	for (int cell = 0; cell < totalCells; cell++) {
-		if (!isEmpty(cell) && (board[cell] & turn)) {
-
-			auto moves = getPossibleMoves(cell);
-			for (auto dest : moves) {
-				checkingPosition++;
-				if (!makeMove(cell, dest)) continue;
-				float val = search(this, depth - 1, -1e9, 1e9, turn == constants::team::black);
-				restorePrevious();
-				checkingPosition--;
-
-				if (val > bestVal) {
-					bestVal = val;
-					move[0] = cell;
-					move[1] = dest;
-				}
-			}
-		}
-	}
-
-	bestMove[0] = move[0];
-	bestMove[1] = move[1];
-	evaluation = bestVal;
-}*/
-
-#include "debug.cpp"
 void state::calcBestMove(int depth) {
+	_debug = 0;
 	checkingPosition++;
-	temp(this, depth);
-	temp2(this, depth);
+	debug(depth);
 	checkingPosition--;
 }

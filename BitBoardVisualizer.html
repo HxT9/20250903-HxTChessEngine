@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BitBoard Visualizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .input-section {
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            padding: 8px;
+            font-size: 16px;
+            width: 200px;
+        }
+        button {
+            padding: 8px 16px;
+            font-size: 16px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 20px auto;
+        }
+        td {
+            width: 80px;
+            height: 80px;
+            text-align: center;
+            border: 3px solid #666;
+            font-size: 12px;
+        }
+        .set-bit {
+            background-color: #ff6b6b;
+            color: white;
+        }
+        .coordinates {
+            font-size: 16px;
+            font-weight: bold;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <center>
+        <h1>BitBoard Visualizer</h1>
+        <div class="input-section">
+            <label for="bitboardInput">Enter uint64 bitboard value:</label>
+            <input type="text" id="bitboardInput" placeholder="e.g., 1 or 18446462598732840960">
+            <button onclick="visualizeBitboard()">Visualize</button>
+        </div>
+    </center>
+
+    <table id="chessboard">
+        <!-- Board will be generated here -->
+    </table>
+
+    <script>
+        function createEmptyBoard() {
+            const table = document.getElementById('chessboard');
+            table.innerHTML = '';
+
+            // Create 8x8 board (rank 8 to 1, file a to h)
+            for (let rank = 7; rank >= 0; rank--) {
+                const row = table.insertRow();
+                for (let file = 0; file < 8; file++) {
+                    const cell = row.insertCell();
+                    const squareIndex = rank * 8 + file;
+                    const fileLetter = String.fromCharCode(97 + file); // a-h
+                    const rankNumber = rank + 1; // 1-8
+
+                    //cell.textContent = fileLetter + rankNumber + "" + squareIndex;
+                    cell.textContent = squareIndex;
+                    cell.className = 'coordinates';
+                }
+            }
+        }
+
+        function visualizeBitboard() {
+            const input = document.getElementById('bitboardInput').value.trim();
+
+            // Parse input as decimal or hex
+            let bitboardValue;
+            if (input.includes('x')) {
+                bitboardValue = parseInt(input, 16);
+            } else {
+                bitboardValue = parseInt(input, 10);
+            }
+
+            if (isNaN(bitboardValue) || bitboardValue < 0 || bitboardValue > 18446744073709551615) {
+                alert('Please enter a valid uint64 value (0 to 18446744073709551615)');
+                return;
+            }
+
+            createEmptyBoard();
+            const table = document.getElementById('chessboard');
+
+            // Update cells based on bitboard
+            for (let rank = 7; rank >= 0; rank--) {
+                for (let file = 0; file < 8; file++) {
+                    const squareIndex = rank * 8 + file;
+                    const cell = table.rows[7 - rank].cells[file];
+
+                    // Check if bit is set (bitboard & (1ULL << squareIndex))
+                    if (BigInt(bitboardValue) & (1n << BigInt(squareIndex))) {
+                        cell.classList.add('set-bit');
+                    } else {
+                        cell.classList.remove('set-bit');
+                    }
+                }
+            }
+        }
+
+        // Initialize empty board on load
+        createEmptyBoard();
+
+        // Allow Enter key to trigger visualization
+        document.getElementById('bitboardInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                visualizeBitboard();
+            }
+        });
+    </script>
+</body>
+</html>

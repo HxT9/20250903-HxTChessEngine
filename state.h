@@ -1,10 +1,17 @@
 #pragma once
-#include <string>
-#include <stack>
+#include <cstdint>
+#include <cstdio>
+#include <memory>
+#include <intrin.h>
 
-#define _BITBOARD_FOR_BEGIN(bb) while(bb) {
-#define _BITBOARD_GET_FIRST_1(bb) _tzcnt_u64(bb);
-#define _BITBOARD_FOR_END(bb) bb &= bb - 1;}
+#define _BITBOARD_COUNT_1(bb) __popcnt64(bb)
+#define _BITBOARD_FOR_BEGIN(bb) { uint64_t __tempBB = bb; while(__tempBB)
+#define _BITBOARD_GET_FIRST_1 _tzcnt_u64(__tempBB)
+#define _BITBOARD_FOR_END __tempBB &= __tempBB - 1; }
+
+#define _BITBOARD_FOR_BEGIN_2(bb) { uint64_t __tempBB2 = bb; while(__tempBB2)
+#define _BITBOARD_GET_FIRST_1_2 _tzcnt_u64(__tempBB2)
+#define _BITBOARD_FOR_END_2 __tempBB2 &= __tempBB2 - 1; }
 
 namespace castle {
 	const int whiteKing = 4, blackKing = 60; //king starting position
@@ -13,38 +20,45 @@ namespace castle {
 	const int whiteROO = 5, whiteROOO = 3, blackROO = 61, blackROOO = 59; //rook castling position
 }
 
-uint64_t kingMoves[64];
-uint64_t knightMoves[64];
 
 struct Magic {
 	uint64_t mask;
 	uint64_t magic;
-	int shift;
+	uint32_t shift;
 	uint64_t* attacks;
 };
-uint64_t rookMasks[64];
-uint64_t bishopMasks[64];
-Magic rookMagics[64];
-Magic bishopMagics[64];
-uint64_t rookMoves[64][4096];
-uint64_t bishopMoves[64][512];
-uint64_t whitePawnPushes[64];
-uint64_t whitePawnDoublePushes[64];
-uint64_t whitePawnCaptures[64];
-uint64_t blackPawnPushes[64];
-uint64_t blackPawnDoublePushes[64];
-uint64_t blackPawnCaptures[64];
+
+struct state_moves_generator_generatedMoves {
+	uint64_t rookMasks[64];
+	uint64_t bishopMasks[64];
+	Magic rookMagics[64];
+	Magic bishopMagics[64];
+
+	uint64_t kingMoves[64];
+	uint64_t knightMoves[64];
+	uint64_t rookMoves[64][4096];
+	uint64_t bishopMoves[64][512];
+	uint64_t whitePawnPushes[64];
+	uint64_t whitePawnDoublePushes[64];
+	uint64_t whitePawnCaptures[64];
+	uint64_t blackPawnPushes[64];
+	uint64_t blackPawnDoublePushes[64];
+	uint64_t blackPawnCaptures[64];
+};
+
+extern state_moves_generator_generatedMoves generatedMoves;
+
 void initMoves();
 
-struct moveData {
-	//main bitboards
+struct coreData {
 	uint64_t whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKing;
 	uint64_t blackPawns, blackKnights, blackBishops, blackRooks, blackQueens, blackKing;
-	uint64_t movedPieces, onTakeWhite, onTakeBlack;
+	uint64_t enPassant, onTakeWhite, onTakeBlack;
+	uint64_t attackedFrom[64], attacks[64];
 
-	//other
-	int turn, enPassant;
-	bool whiteKingCastle, blackKingCastle;
+	bool isWhiteTurn;
+	bool whiteKingCastle, whiteOORCanCastle, whiteOOORCanCastle;
+	bool blackKingCastle, blackOORCanCastle, blackOOORCanCastle;
 };
 
 class state {
@@ -55,48 +69,36 @@ public:
 	//Calculated with updateBoard
 	bool isEnded = false;
 
-	//main bitboards
-	uint64_t whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKing;
-	uint64_t blackPawns, blackKnights, blackBishops, blackRooks, blackQueens, blackKing;
-	uint64_t movedPieces, onTakeWhite, onTakeBlack;
+	coreData core;
 
 	//Derived bitboards
-	uint64_t whitePieces, blackPieces, occupied, empty;	
+	uint64_t whitePieces, blackPieces, occupied, empty;
 
 	//other
-	int turn;
-	uint64_t enPassant;
-	bool whiteKingCastle, blackKingCastle;
-
 	int checkingPosition = 0;
 
-	std::stack<moveData> moves;
+	coreData history[1024];
+	int historyIndex = 0;
 
 	state();
-	state(state* toCopy);
 	state(state &toCopy) = default;
 	~state();
 	void init();
 	void updateBoard();
-	void end(int teamWin, int endCause);
+	void end(bool isWhiteWin, int endCause);
 	bool makeMove(int cellStart, int cellEnd);
 
 	//utilities
-	std::string toString();
 	const char* getUnicodePiece(int i);
 	void saveMove(int from, int to);
 	void undoMove();
-	void copyBoardFrom(state* toCopy);
-	void initBoard();
+	void initPieces();
 	int getPiece(char column, int row);
 	inline bool isEmpty(int cell);
 	inline bool isWhite(int cell);
-
-	//BitBoardUtilities
-	inline bool getBB(uint64_t& data, int i);
+	inline bool getBB(uint64_t data, int i);
 	inline void setBB(uint64_t& data, int i);
 	inline void resetBB(uint64_t& data, int i);
-
 	int getPiece(int cell);
 	int getPieceType(int cell);
 	void setPiece(int cell, int piece);
@@ -104,6 +106,7 @@ public:
 	uint64_t getPieces(int pieceType, int team);
 
 	//moves
+	void movePiece(int cellStart, int cellEnd);
 	uint64_t getKingMoves(int cell);
 	uint64_t getKnightMoves(int cell);
 	uint64_t getRookMoves(int cell);
@@ -111,19 +114,33 @@ public:
 	uint64_t getQueenMoves(int cell);
 	uint64_t getPawnMoves(int cell);
 	uint64_t getPossibleMoves(int cell);
-	uint64_t getAllAttacks(bool isWhite);
-
 	uint64_t checkPossibleMoves(int cell, uint64_t possibleMoves);
-	uint64_t getPossibleMoves(int cell);
-	bool canCastle(int king, int rook, int kingDest, int rookDest, uint64_t attacked);
-	void slidingPiecesMoves(int cell, int* coordinates, uint64_t &possibleMoves, int moveX, int moveY, bool onlyAttacking);
-	bool hasAnyLegalMove(int team);
-	void handleSpecialMoves(int cellStart, int cellEnd);
+	bool hasAnyLegalMove(bool isWhite);
+	void handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int cellEnd);
+
+	//attacks
+	uint64_t getAllAttacks(int cell);
+	uint64_t getAllAttacks(bool isWhite);
+	uint64_t getKingAttacks(int cell);
+	uint64_t getKnightAttacks(int cell);
+	uint64_t getRookAttacks(int cell);
+	uint64_t getBishopAttacks(int cell);
+	uint64_t getQueenAttacks(int cell);
+	uint64_t getPawnAttacks(int cell);
+	uint64_t getAttackedFrom(int cell);
+	void initAttacks();
+	void setAttacks(int attackerCell, bool isWhite);
+	void resetAttacks(int attackerCell, bool isWhite, bool isPieceStillPresent = false);
+	void updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to);
+
 
 	//evaluation
 	float evaluation = 0;
 	int bestMove[2] = { -1, -1 };
 	float evaluate();
-	float search(state* s, int depth, int alpha, int beta, bool isWhite);
 	void calcBestMove(int depth);
+
+	//debug
+	void debug(int level);
+	uint64_t _debug;
 };

@@ -9,7 +9,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-int w = 200, h = w + 50;
+int w = 500;
 
 state* s;
 ID3D11ShaderResourceView* pieceTextures[13];
@@ -41,18 +41,26 @@ void drawChessBoard() {
             ImGui::GetWindowDrawList()->AddRectFilled(topLeft, bottomRight, col);
             if (!s->isEmpty(i)) {
                 ImTextureID tex = 0;
-                if (s->board[i] & constants::piece::pawn)
-                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[0] : (ImTextureID)pieceTextures[6];
-                if (s->board[i] & constants::piece::rook)
-                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[1] : (ImTextureID)pieceTextures[7];
-                if (s->board[i] & constants::piece::knight)
-                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[2] : (ImTextureID)pieceTextures[8];
-                if (s->board[i] & constants::piece::bishop)
-                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[3] : (ImTextureID)pieceTextures[9];
-                if (s->board[i] & constants::piece::queen)
-                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[4] : (ImTextureID)pieceTextures[10];
-                if (s->board[i] & constants::piece::king)
-                    tex = s->board[i] & constants::team::white ? (ImTextureID)pieceTextures[5] : (ImTextureID)pieceTextures[11];
+                switch (s->getPieceType(i)) {
+                case constants::piece::pawn:
+                    tex = s->isWhite(i) ? (ImTextureID)pieceTextures[0] : (ImTextureID)pieceTextures[6];
+                    break;
+                case constants::piece::rook:
+                    tex = s->isWhite(i) ? (ImTextureID)pieceTextures[1] : (ImTextureID)pieceTextures[7];
+                    break;
+                case constants::piece::knight:
+                    tex = s->isWhite(i) ? (ImTextureID)pieceTextures[2] : (ImTextureID)pieceTextures[8];
+                    break;
+                case constants::piece::bishop:
+                    tex = s->isWhite(i) ? (ImTextureID)pieceTextures[3] : (ImTextureID)pieceTextures[9];
+                    break;
+                case constants::piece::queen:
+                    tex = s->isWhite(i) ? (ImTextureID)pieceTextures[4] : (ImTextureID)pieceTextures[10];
+                    break;
+                case constants::piece::king:
+                    tex = s->isWhite(i) ? (ImTextureID)pieceTextures[5] : (ImTextureID)pieceTextures[11];
+                    break;
+                }
                 if (tex ) ImGui::GetWindowDrawList()->AddImage(tex, topLeft, bottomRight);
             }
 
@@ -61,11 +69,11 @@ void drawChessBoard() {
                 ImGui::GetWindowDrawList()->AddImage(tex, topLeft, bottomRight);
             }
 
-            /*if (s->onTakeWhite.get(i))
+            if (s->getBB(s->core.onTakeWhite, i))
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 255, 255), 0.f, 0, 6.f);
 
-            if (s->onTakeBlack.get(i))
-                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 0, 0, 255), 0.f, 0, 3.f);*/
+            if (s->getBB(s->core.onTakeBlack, i))
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 0, 0, 255), 0.f, 0, 3.f);
 
             if (i == s->bestMove[0])
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 255, 0, 255), 0.f, 0, 3.f);
@@ -219,6 +227,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             return 0;
         g_ResizeWidth = (UINT)LOWORD(lParam); // Queue resize
         g_ResizeHeight = (UINT)HIWORD(lParam);
+        w = g_ResizeWidth;
         return 0;
     case WM_SYSCOMMAND:
         if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
@@ -238,7 +247,7 @@ int initDraw(){
     // Create application window
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr };
     RegisterClassExW(&wc);
-    HWND hwnd = CreateWindowW(wc.lpszClassName, L"HxTChess", WS_OVERLAPPEDWINDOW, 100, 100, (int)(w * main_scale), (int)(h * main_scale), nullptr, nullptr, wc.hInstance, nullptr);
+    HWND hwnd = CreateWindowW(wc.lpszClassName, L"HxTChess", WS_OVERLAPPEDWINDOW, 100, 100, (int)(w * main_scale), (int)((w + 50) * main_scale), nullptr, nullptr, wc.hInstance, nullptr);
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -339,7 +348,7 @@ int initDraw(){
             ImGui::SetNextWindowPos(ImVec2{ 0.f, 0.f });
             ImGui::SetNextWindowSize(ImVec2{ io.DisplaySize.x , io.DisplaySize.y });
 
-            ImGui::Begin("ChessBoard", nullptr, ImGuiWindowFlags_NoTitleBar);
+            ImGui::Begin("ChessBoard", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
             drawChessBoard();
             ImGui::End();
         }
