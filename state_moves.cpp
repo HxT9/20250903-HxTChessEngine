@@ -1,6 +1,16 @@
 #include "state.h"
 #include "constants.h"
 
+int state::countAllPossibleMoves(bool isWhite) {
+	int ret = 0;
+	_BITBOARD_FOR_BEGIN(isWhite ? whitePieces : blackPieces) {
+		int from = _BITBOARD_GET_FIRST_1;
+		ret += _BITBOARD_COUNT_1(getPossibleMoves(from));
+		_BITBOARD_FOR_END;
+	}
+	return ret;
+}
+
 void state::movePiece(int cellStart, int cellEnd) {
 	setPiece(cellEnd, getPiece(cellStart));
 	clearPiece(cellStart);
@@ -226,9 +236,9 @@ bool state::makeMove(int cellStart, int cellEnd) {
 
 	updateAttacksAfterMove(pieceType, isWhite, cellStart, cellEnd);
 
-	updateBoard();
-
 	core.isWhiteTurn = !core.isWhiteTurn;
+
+	updateBoard();
 
 	return true;
 }

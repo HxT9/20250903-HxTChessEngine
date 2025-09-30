@@ -9,7 +9,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-int w = 500;
+int w = 200;
 
 state* s;
 ID3D11ShaderResourceView* pieceTextures[13];
@@ -69,16 +69,16 @@ void drawChessBoard() {
                 ImGui::GetWindowDrawList()->AddImage(tex, topLeft, bottomRight);
             }
 
-            if (s->getBB(s->core.onTakeWhite, i))
+            /*if (s->getBB(s->core.onTakeWhite, i))
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 255, 255), 0.f, 0, 6.f);
 
             if (s->getBB(s->core.onTakeBlack, i))
-                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 0, 0, 255), 0.f, 0, 3.f);
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 0, 0, 255), 0.f, 0, 3.f);*/
 
             if (i == s->bestMove[0])
-                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 255, 0, 255), 0.f, 0, 3.f);
+                ; ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 255, 0, 255), 0.f, 0, 3.f);
             if (i == s->bestMove[1])
-                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 200, 0, 255), 0.f, 0, 3.f);
+                ; ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 200, 0, 255), 0.f, 0, 3.f);
 
             if (i == selectedCell)
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 0, 255), 0.f, 0, 3.f);
@@ -105,7 +105,7 @@ void handleKeyDown(MSG msg) {
     switch (msg.wParam) {
     case 'Z':
         if (GetKeyState(VK_CONTROL) & 0x8000)
-            s->undoMove();
+            s->undoMove(true);
     }
 }
 

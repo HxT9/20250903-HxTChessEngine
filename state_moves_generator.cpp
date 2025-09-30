@@ -269,6 +269,112 @@ void initPawnMoves() {
 	}
 }
 
+void initPawnEval()
+{
+	for (int f = 0; f < 8; f++) {
+		for (int r = 0; r < 8; r++) {
+			int cell = r * 8 + f;
+
+			generatedMoves.whitePawnEvalOccupancy[cell] = 0;
+			generatedMoves.blackPawnEvalOccupancy[cell] = 0;
+			generatedMoves.whitePawnEvalNoDefense[cell] = 0;
+			generatedMoves.blackPawnEvalNoDefense[cell] = 0;
+			generatedMoves.singlePawnEval[cell] = 0;
+
+			for (int i = cell + 8; i < 64; i += 8)
+				generatedMoves.whitePawnEvalOccupancy[cell] |= (1ULL << i);
+			generatedMoves.whitePawnEvalNoDefense[cell] = generatedMoves.whitePawnEvalOccupancy[cell];
+
+			for (int i = cell - 8; i >= 0; i -= 8)
+				generatedMoves.blackPawnEvalOccupancy[cell] |= (1ULL << i);
+			generatedMoves.blackPawnEvalNoDefense[cell] = generatedMoves.blackPawnEvalOccupancy[cell];
+
+			if (f > 0) {
+				for (int i = f - 1; i < 64; i += 8)
+					generatedMoves.singlePawnEval[cell] |= (1ULL << i);
+
+				for (int i = cell + 7; i < 64; i+= 8)
+					generatedMoves.whitePawnEvalNoDefense[cell] |= (1ULL << i);
+
+				for (int i = cell - 9; i >= 0; i -= 8)
+					generatedMoves.blackPawnEvalNoDefense[cell] |= (1ULL << i);
+			}
+
+			if (f < 7) {
+				for (int i = f + 1; i < 64; i += 8)
+					generatedMoves.singlePawnEval[cell] |= (1ULL << i);
+
+				for (int i = cell + 9; i < 64; i += 8)
+					generatedMoves.whitePawnEvalNoDefense[cell] |= (1ULL << i);
+
+				for (int i = cell - 7; i >= 0; i -= 8)
+					generatedMoves.blackPawnEvalNoDefense[cell] |= (1ULL << i);
+			}
+		}
+	}
+}
+
+void initKingEval() {
+	for (int f = 0; f < 8; f++) {
+		for (int r = 0; r < 8; r++) {
+			int cell = r * 8 + f;
+
+			generatedMoves.whiteKingPawnShield[cell] = 0;
+			generatedMoves.blackKingPawnShield[cell] = 0;
+
+			// White king pawn shield (pawns on ranks 2-3 in front of king)
+			if (r < 6) { // King not on 7th or 8th rank
+				// Primary shield: rank+1 (pawns on 2nd/3rd rank)
+				int shieldRank = r + 1;
+				for (int df = -1; df <= 1; df++) {
+					int shieldFile = f + df;
+					if (shieldFile >= 0 && shieldFile < 8 && shieldRank < 8) {
+						int shieldSquare = shieldRank * 8 + shieldFile;
+						generatedMoves.whiteKingPawnShield[cell] |= (1ULL << shieldSquare);
+					}
+				}
+
+				// Secondary shield: rank+2 (pawns on 3rd/4th rank) - less important
+				if (r < 5) { // King not on 6th rank or higher
+					int secondaryRank = r + 2;
+					for (int df = -1; df <= 1; df++) {
+						int shieldFile = f + df;
+						if (shieldFile >= 0 && shieldFile < 8 && secondaryRank < 8) {
+							int shieldSquare = secondaryRank * 8 + shieldFile;
+							generatedMoves.whiteKingPawnShield[cell] |= (1ULL << shieldSquare);
+						}
+					}
+				}
+			}
+
+			// Black king pawn shield (pawns on ranks 7-6 in front of king)
+			if (r > 1) { // King not on 1st or 2nd rank
+				// Primary shield: rank-1 (pawns on 7th/6th rank)
+				int shieldRank = r - 1;
+				for (int df = -1; df <= 1; df++) {
+					int shieldFile = f + df;
+					if (shieldFile >= 0 && shieldFile < 8 && shieldRank >= 0) {
+						int shieldSquare = shieldRank * 8 + shieldFile;
+						generatedMoves.blackKingPawnShield[cell] |= (1ULL << shieldSquare);
+					}
+				}
+
+				// Secondary shield: rank-2 (pawns on 6th/5th rank) - less important
+				if (r > 2) { // King not on 3rd rank or lower
+					int secondaryRank = r - 2;
+					for (int df = -1; df <= 1; df++) {
+						int shieldFile = f + df;
+						if (shieldFile >= 0 && shieldFile < 8 && secondaryRank >= 0) {
+							int shieldSquare = secondaryRank * 8 + shieldFile;
+							generatedMoves.blackKingPawnShield[cell] |= (1ULL << shieldSquare);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 void initMoves() {
 	initKingMoves();
 	initKnightMoves();
@@ -280,4 +386,6 @@ void initMoves() {
 	initRookBishopMoves(false);
 
 	initPawnMoves();
+	initPawnEval();
+	initKingEval();
 }

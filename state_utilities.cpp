@@ -6,7 +6,7 @@ void state::saveMove(int from, int to) {
 	historyIndex++;
 }
 
-void state::undoMove() {
+void state::undoMove(bool manual) {
 	if (historyIndex == 0) return;
 	memcpy(&core, &(history[historyIndex - 1]), sizeof(coreData));
 	historyIndex--;
@@ -18,6 +18,8 @@ void state::undoMove() {
 	blackPieces = core.blackPawns | core.blackRooks | core.blackKnights | core.blackBishops | core.blackQueens | core.blackKing;
 	occupied = whitePieces | blackPieces;
 	empty = ~occupied;
+
+	if (manual) updateBoard();
 }
 
 void state::initPieces()

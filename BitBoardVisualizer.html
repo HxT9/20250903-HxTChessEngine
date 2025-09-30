@@ -56,6 +56,10 @@
             <input type="text" id="bitboardInput" placeholder="e.g., 1 or 18446462598732840960">
             <button onclick="visualizeBitboard()">Visualize</button>
         </div>
+        <div class="binary-section">
+            <label>Binary representation</label><br />
+            <input type="text" id="binaryOutput" style="text-align:center; font-family: monospace; font-size: 18px; width:650px; margin-top: 5px;">
+        </div>
     </center>
 
     <table id="chessboard">
@@ -79,8 +83,23 @@
                     //cell.textContent = fileLetter + rankNumber + "" + squareIndex;
                     cell.textContent = squareIndex;
                     cell.className = 'coordinates';
+                    cell.addEventListener('click', () => toggleBit(squareIndex));
                 }
             }
+        }
+
+        function toggleBit(squareIndex) {
+            const inputElement = document.getElementById('bitboardInput');
+            let currentValue = BigInt(inputElement.value.trim() || '0');
+
+            // Toggle the bit at squareIndex
+            currentValue ^= (1n << BigInt(squareIndex));
+
+            // Update the input field
+            inputElement.value = currentValue.toString();
+
+            // Re-visualize the board
+            visualizeBitboard();
         }
 
         function visualizeBitboard() {
@@ -98,6 +117,10 @@
                 alert('Please enter a valid uint64 value (0 to 18446744073709551615)');
                 return;
             }
+
+            // Update binary display
+            const binaryString = BigInt(bitboardValue).toString(2).padStart(64, '0');
+            document.getElementById('binaryOutput').value = binaryString;
 
             createEmptyBoard();
             const table = document.getElementById('chessboard');

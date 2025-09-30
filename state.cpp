@@ -42,16 +42,18 @@ void state::init()
 }
 
 void state::updateBoard() {
-
-
 	if (checkingPosition) return;
 
 	//From here only when not checking position
 
-	if (!hasAnyLegalMove(!core.isWhiteTurn))
-		end(core.isWhiteTurn, constants::endCause::checkmate);
+	if (!hasAnyLegalMove(core.isWhiteTurn))
+		end(!core.isWhiteTurn, constants::endCause::checkmate);
 
-	calcBestMove(6);
+	float eval = evaluate();
+	printf("%f\n", eval);
+
+	int tp = _BITBOARD_COUNT_1(whitePieces | blackPieces);
+	calcBestMove(4);
 }
 
 void state::end(bool isWhiteWin, int endCause) {

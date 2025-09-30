@@ -29,6 +29,11 @@ struct Magic {
 };
 
 struct state_moves_generator_generatedMoves {
+	uint64_t whitePawnEvalOccupancy[64], blackPawnEvalOccupancy[64];
+	uint64_t whitePawnEvalNoDefense[64], blackPawnEvalNoDefense[64];
+	uint64_t singlePawnEval[64];
+	uint64_t whiteKingPawnShield[64], blackKingPawnShield[64];
+
 	uint64_t rookMasks[64];
 	uint64_t bishopMasks[64];
 	Magic rookMagics[64];
@@ -91,7 +96,7 @@ public:
 	//utilities
 	const char* getUnicodePiece(int i);
 	void saveMove(int from, int to);
-	void undoMove();
+	void undoMove(bool manual = false);
 	void initPieces();
 	int getPiece(char column, int row);
 	inline bool isEmpty(int cell);
@@ -115,6 +120,7 @@ public:
 	uint64_t getPawnMoves(int cell);
 	uint64_t getPossibleMoves(int cell);
 	uint64_t checkPossibleMoves(int cell, uint64_t possibleMoves);
+	int countAllPossibleMoves(bool isWhite);
 	bool hasAnyLegalMove(bool isWhite);
 	void handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int cellEnd);
 
@@ -123,9 +129,9 @@ public:
 	uint64_t getAllAttacks(bool isWhite);
 	uint64_t getKingAttacks(int cell);
 	uint64_t getKnightAttacks(int cell);
-	uint64_t getRookAttacks(int cell);
-	uint64_t getBishopAttacks(int cell);
-	uint64_t getQueenAttacks(int cell);
+	uint64_t getRookAttacks(int cell, uint64_t occupiedMask = 0);
+	uint64_t getBishopAttacks(int cell, uint64_t occupiedMask = 0);
+	uint64_t getQueenAttacks(int cell, uint64_t occupiedMask = 0);
 	uint64_t getPawnAttacks(int cell);
 	uint64_t getAttackedFrom(int cell);
 	void initAttacks();
@@ -137,7 +143,11 @@ public:
 	//evaluation
 	float evaluation = 0;
 	int bestMove[2] = { -1, -1 };
+	inline int getTotalPieceCount();
+	inline int getGamePhase();
 	float evaluate();
+	float alphaBeta(float alpha, float beta, int depth, int startingDepth);
+	float quiesce(float alpha, float beta);
 	void calcBestMove(int depth);
 
 	//debug

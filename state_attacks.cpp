@@ -54,20 +54,20 @@ uint64_t state::getKnightAttacks(int cell) {
 	return generatedMoves.knightMoves[cell];
 }
 
-uint64_t state::getRookAttacks(int cell) {
-	uint64_t occupancy = occupied & generatedMoves.rookMasks[cell];
+uint64_t state::getRookAttacks(int cell, uint64_t occupiedMask) {
+	uint64_t occupancy = (occupiedMask ? occupiedMask : occupied) & generatedMoves.rookMasks[cell];
 	int index = (occupancy * generatedMoves.rookMagics[cell].magic) >> generatedMoves.rookMagics[cell].shift;
 	return generatedMoves.rookMoves[cell][index];
 }
 
-uint64_t state::getBishopAttacks(int cell) {
-	uint64_t occupancy = occupied & generatedMoves.bishopMasks[cell];
+uint64_t state::getBishopAttacks(int cell, uint64_t occupiedMask) {
+	uint64_t occupancy = (occupiedMask ? occupiedMask : occupied) & generatedMoves.bishopMasks[cell];
 	int index = (occupancy * generatedMoves.bishopMagics[cell].magic) >> generatedMoves.bishopMagics[cell].shift;
 	return generatedMoves.bishopMoves[cell][index];
 }
 
-uint64_t state::getQueenAttacks(int cell) {
-	return getRookAttacks(cell) | getBishopAttacks(cell);
+uint64_t state::getQueenAttacks(int cell, uint64_t occupiedMask) {
+	return getRookAttacks(cell, occupiedMask) | getBishopAttacks(cell, occupiedMask);
 }
 
 uint64_t state::getPawnAttacks(int cell) {
@@ -164,7 +164,7 @@ void state::updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to
 		case constants::piece::bishop:
 		case constants::piece::queen:
 			//I have to recalculate its attacks
-			resetAttacks(attackerCell, this->isWhite(attackerCell));
+			resetAttacks(attackerCell, this->isWhite(attackerCell), true);
 			setAttacks(attackerCell, this->isWhite(attackerCell));
 			break;
 		}
@@ -178,6 +178,7 @@ void state::updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to
 		case constants::piece::rook:
 		case constants::piece::bishop:
 		case constants::piece::queen:
+			resetAttacks(attackerCell, this->isWhite(attackerCell), true);
 			setAttacks(attackerCell, this->isWhite(attackerCell));
 			break;
 		}
