@@ -60,7 +60,10 @@
     <ClCompile Include="state_utilities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="state_debug.cpp">
+    <ClCompile Include="state_attacks.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="state_moves_generator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -80,8 +83,8 @@
     <ClInclude Include="stb_image.h">
       <Filter>ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="nTreeNode.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="BitBoardVisualizer.html" />
   </ItemGroup>
 </Project>

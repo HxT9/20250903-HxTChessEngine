@@ -3,6 +3,12 @@
 #include <algorithm>
 #include <iterator>
 #include <thread>
+#include <vector>
+#include <tuple>
+#include <atomic>
+#include <future>
+#include <chrono>
+#include <mutex>
 
 #define EVALUATION_DEBUG 0
 std::string ls_debug;
@@ -344,9 +350,7 @@ float state::evaluate()
 	return whiteScore - blackScore;
 }
 
-
-
-float state::alphaBeta(float alpha, float beta, int depth, int startingDepth) {
+float state::alphaBeta(float alpha, float beta, int depth) {
     if (depth == 0 || isEnded) {
         return evaluate();
     }
@@ -358,16 +362,8 @@ float state::alphaBeta(float alpha, float beta, int depth, int startingDepth) {
 		_BITBOARD_FOR_BEGIN_2(moves) {
 			int to = _BITBOARD_GET_FIRST_1_2;
 
-			//if (depth == startingDepth)
-			//	int bp = 0;
-
 			if (!makeMove(from, to)) continue;
-			float eval = alphaBeta(alpha, beta, depth - 1, startingDepth);
-
-#if EVALUATION_DEBUG
-			if (depth == startingDepth)
-				printf("\n\n%s%s", (std::string("From ") + std::to_string(from) + std::string(" to ") + std::to_string(to)).c_str(), ls_debug.c_str());
-#endif
+			float eval = alphaBeta(alpha, beta, depth - 1);
 
 			undoMove();
 
@@ -375,20 +371,12 @@ float state::alphaBeta(float alpha, float beta, int depth, int startingDepth) {
 				if (eval >= beta) return beta;
 				if (eval > alpha) {
 					alpha = eval;
-					if (depth == startingDepth) {
-						bestMove[0] = from;
-						bestMove[1] = to;
-					}
 				}
 			}
 			else {
 				if (eval <= alpha) return alpha;
 				if (eval < beta) {
 					beta = eval;
-					if (depth == startingDepth) {
-						bestMove[0] = from;
-						bestMove[1] = to;
-					}
 				}
 			}
 			_BITBOARD_FOR_END_2;
@@ -405,10 +393,86 @@ float state::quiesce(float alpha, float beta) {
 	return eval;
 }
 
+std::mutex evalMutex;
+
+using namespace std::chrono_literals;
+
 void state::calcBestMove(int depth) {
 	checkingPosition++;
-    bestMove[0] = -1;
-    bestMove[1] = -1;
-	alphaBeta(-1e9f, 1e9f, depth, depth);
+	bestMove[0] = -1;
+	bestMove[1] = -1;
+
+	struct MoveEval {
+		int from, to;
+		float eval;
+	};
+
+	std::vector<MoveEval> moveEvals;
+	std::vector<std::future<void>> futures;
+
+	//Get all moves
+	uint64_t pieces = core.isWhiteTurn ? whitePieces : blackPieces;
+	_BITBOARD_FOR_BEGIN(pieces) {
+		int from = _BITBOARD_GET_FIRST_1;
+		uint64_t moves = getPossibleMoves(from);
+		_BITBOARD_FOR_BEGIN_2(moves) {
+			int to = _BITBOARD_GET_FIRST_1_2;
+
+			while (futures.size() >= DEFAULT_THREAD_NUMBER) {
+				for (int j = 0; j < futures.size(); j++) {
+					if (futures[j].wait_for(0ms) == std::future_status::ready)
+						futures.erase(std::begin(futures) + j);
+				}
+			}
+
+			//Make a new state per thread
+			state* s_copy = new state(*this);
+			futures.push_back(std::async(std::launch::async, [s_copy, depth, from, to, &moveEvals]() {
+				if (s_copy->makeMove(from, to)) {
+					float eval = s_copy->alphaBeta(-1e9f, 1e9f, depth - 1);
+					// Store result in a thread-safe way
+					std::lock_guard<std::mutex> lock(evalMutex);
+					moveEvals.push_back({ from, to, eval });
+				}
+				s_copy->undoMove();
+				delete s_copy;
+				}));
+
+
+		_BITBOARD_FOR_END_2;
+		}
+	_BITBOARD_FOR_END;
+	}
+
+	// Wait for all remaining threads
+	for (auto& f : futures) {
+		f.wait();
+	}
+
+	// Find best move
+	float bestEval = core.isWhiteTurn ? -1e9f : 1e9f;
+	for (const auto& moveEval : moveEvals) {
+		if (core.isWhiteTurn) {
+			if (moveEval.eval > bestEval) {
+				bestEval = moveEval.eval;
+				bestMove[0] = moveEval.from;
+				bestMove[1] = moveEval.to;
+			}
+		} else {
+			if (moveEval.eval < bestEval) {
+				bestEval = moveEval.eval;
+				bestMove[0] = moveEval.from;
+				bestMove[1] = moveEval.to;
+			}
+		}
+	}
+
 	checkingPosition--;
 }
+
+
+
+/*#if EVALUATION_DEBUG
+	if (depth == startingDepth)
+		printf("\n\n%s%s", (std::string("From ") + std::to_string(from) + std::string(" to ") + std::to_string(to)).c_str(), ls_debug.c_str());
+#endif*/

@@ -28,6 +28,14 @@ state::state() {
 	core.blackKingCastle = false;
 	core.blackOORCanCastle = true;
 	core.blackOOORCanCastle = true;
+
+	for (int i = 0; i < 64; i++) {
+		core.attacks[i] = 0;
+		core.attackedFrom[i] = 0;
+	}
+
+	core.lastMove[0] = -1;
+	core.lastMove[1] = -1;
 }
 
 state::~state() {
@@ -53,7 +61,10 @@ void state::updateBoard() {
 	printf("%f\n", eval);
 
 	int tp = _BITBOARD_COUNT_1(whitePieces | blackPieces);
-	calcBestMove(4);
+	calcBestMove(6);
+
+	if (ENABLE_BOT && !core.isWhiteTurn)
+		makeMove(bestMove[0], bestMove[1]); 
 }
 
 void state::end(bool isWhiteWin, int endCause) {

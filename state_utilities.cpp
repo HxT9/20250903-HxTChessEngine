@@ -3,13 +3,13 @@
 
 void state::saveMove(int from, int to) {
 	memcpy(&(history[historyIndex]), &core, sizeof(coreData));
-	historyIndex++;
+	historyIndex ++;
 }
 
 void state::undoMove(bool manual) {
 	if (historyIndex == 0) return;
-	memcpy(&core, &(history[historyIndex - 1]), sizeof(coreData));
-	historyIndex--;
+	memcpy(&core, &(history[historyIndex - (ENABLE_BOT && manual ? 2 : 1)]), sizeof(coreData));
+	historyIndex -=  1;
 
 	isEnded = false;
 
@@ -70,10 +70,10 @@ row starting with 1
 */
 int state::getPiece(char column, int row) {
 	if (column >= 97) column -= 97; else column -= 65;
-	if (column < 0 || column > width) return 255;
-	if (row < 0 || row > height) return 255;
+	if (column < 0 || column > 8) return 255;
+	if (row < 0 || row > 8) return 255;
 
-	return getPiece((row - 1) * width + column);
+	return getPiece((row - 1) * 8 + column);
 }
 
 bool state::isEmpty(int cell) {

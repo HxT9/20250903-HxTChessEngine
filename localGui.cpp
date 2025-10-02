@@ -75,10 +75,17 @@ void drawChessBoard() {
             if (s->getBB(s->core.onTakeBlack, i))
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 0, 0, 255), 0.f, 0, 3.f);*/
 
+            if (i == s->core.lastMove[0])
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 0, 255), 0.f, 0, 3.f);
+            if (i == s->core.lastMove[1])
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 200, 0, 255), 0.f, 0, 3.f);
+
+#ifdef _DEBUG
             if (i == s->bestMove[0])
-                ; ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 255, 0, 255), 0.f, 0, 3.f);
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 255, 0, 255), 0.f, 0, 3.f);
             if (i == s->bestMove[1])
-                ; ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 200, 0, 255), 0.f, 0, 3.f);
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 200, 0, 255), 0.f, 0, 3.f);
+#endif
 
             if (i == selectedCell)
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 0, 255), 0.f, 0, 3.f);

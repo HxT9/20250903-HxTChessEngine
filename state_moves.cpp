@@ -73,14 +73,14 @@ uint64_t state::getPawnMoves(int cell) {
 	if (isWhite(cell)) {
 		uint64_t push = generatedMoves.whitePawnPushes[cell];
 		if (!(occupied & push)) moves |= push;
-		if (push && !(occupied & generatedMoves.whitePawnDoublePushes[cell])) moves |= generatedMoves.whitePawnDoublePushes[cell];
+		if (push && !(occupied & push) && !(occupied & generatedMoves.whitePawnDoublePushes[cell])) moves |= generatedMoves.whitePawnDoublePushes[cell];
 		moves |= generatedMoves.whitePawnCaptures[cell] & blackPieces;
-		if(32 <= cell  && cell < 40) moves |= generatedMoves.whitePawnCaptures[cell] & core.enPassant;
+		if(32 <= cell && cell < 40) moves |= generatedMoves.whitePawnCaptures[cell] & core.enPassant;
 	}
 	else {
 		uint64_t push = generatedMoves.blackPawnPushes[cell];
 		if (!(occupied & push)) moves |= push;
-		if (push && !(occupied & generatedMoves.blackPawnDoublePushes[cell])) moves |= generatedMoves.blackPawnDoublePushes[cell];
+		if (push && !(occupied & push) && !(occupied & generatedMoves.blackPawnDoublePushes[cell])) moves |= generatedMoves.blackPawnDoublePushes[cell];
 		moves |= generatedMoves.blackPawnCaptures[cell] & whitePieces;
 		if (24 <= cell && cell < 32) moves |= generatedMoves.blackPawnCaptures[cell] & core.enPassant;
 	}
@@ -225,6 +225,11 @@ bool state::makeMove(int cellStart, int cellEnd) {
 	if (!checkingPosition && isWhite != core.isWhiteTurn) return false;
 #endif
 	if (isEnded) return false;
+
+	if (!checkingPosition) {
+		core.lastMove[0] = cellStart;
+		core.lastMove[1] = cellEnd;
+	}
 
 	int pieceType = getPieceType(cellStart);
 

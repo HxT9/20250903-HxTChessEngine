@@ -4,6 +4,9 @@
 #include <memory>
 #include <intrin.h>
 
+#define DEFAULT_THREAD_NUMBER 20
+#define ENABLE_BOT 0
+
 #define _BITBOARD_COUNT_1(bb) __popcnt64(bb)
 #define _BITBOARD_FOR_BEGIN(bb) { uint64_t __tempBB = bb; while(__tempBB)
 #define _BITBOARD_GET_FIRST_1 _tzcnt_u64(__tempBB)
@@ -12,14 +15,6 @@
 #define _BITBOARD_FOR_BEGIN_2(bb) { uint64_t __tempBB2 = bb; while(__tempBB2)
 #define _BITBOARD_GET_FIRST_1_2 _tzcnt_u64(__tempBB2)
 #define _BITBOARD_FOR_END_2 __tempBB2 &= __tempBB2 - 1; }
-
-namespace castle {
-	const int whiteKing = 4, blackKing = 60; //king starting position
-	const int whiteOOR = 7, whiteOOOR = 0, blackOOR = 63, blackOOOR = 56; //rook starting position
-	const int whiteOO = 6, whiteOOO = 2, blackOO = 62, blackOOO = 58; //king castling position
-	const int whiteROO = 5, whiteROOO = 3, blackROO = 61, blackROOO = 59; //rook castling position
-}
-
 
 struct Magic {
 	uint64_t mask;
@@ -64,17 +59,13 @@ struct coreData {
 	bool isWhiteTurn;
 	bool whiteKingCastle, whiteOORCanCastle, whiteOOORCanCastle;
 	bool blackKingCastle, blackOORCanCastle, blackOOORCanCastle;
+	int lastMove[2];
 };
 
 class state {
 public:
-	//Fixed
-	const int width = 8, height = 8, totalCells = width * height;
-	
-	//Calculated with updateBoard
-	bool isEnded = false;
-
 	coreData core;
+	bool isEnded = false;
 
 	//Derived bitboards
 	uint64_t whitePieces, blackPieces, occupied, empty;
@@ -86,7 +77,6 @@ public:
 	int historyIndex = 0;
 
 	state();
-	state(state &toCopy) = default;
 	~state();
 	void init();
 	void updateBoard();
@@ -94,7 +84,6 @@ public:
 	bool makeMove(int cellStart, int cellEnd);
 
 	//utilities
-	const char* getUnicodePiece(int i);
 	void saveMove(int from, int to);
 	void undoMove(bool manual = false);
 	void initPieces();
@@ -139,18 +128,13 @@ public:
 	void resetAttacks(int attackerCell, bool isWhite, bool isPieceStillPresent = false);
 	void updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to);
 
-
 	//evaluation
 	float evaluation = 0;
 	int bestMove[2] = { -1, -1 };
 	inline int getTotalPieceCount();
 	inline int getGamePhase();
 	float evaluate();
-	float alphaBeta(float alpha, float beta, int depth, int startingDepth);
+	float alphaBeta(float alpha, float beta, int depth);
 	float quiesce(float alpha, float beta);
 	void calcBestMove(int depth);
-
-	//debug
-	void debug(int level);
-	uint64_t _debug;
 };

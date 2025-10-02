@@ -157,7 +157,6 @@
   <ItemGroup>
     <ClCompile Include="20250903 HxTChessEngine.cpp" />
     <ClCompile Include="state_attacks.cpp" />
-    <ClCompile Include="state_debug.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_dx11.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
