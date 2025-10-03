@@ -48,7 +48,7 @@ struct state_moves_generator_generatedMoves {
 
 extern state_moves_generator_generatedMoves generatedMoves;
 
-void initMoves();
+void initGeneratedMoves();
 
 struct coreData {
 	uint64_t whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKing;

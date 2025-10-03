@@ -375,7 +375,7 @@ void initKingEval() {
 	}
 }
 
-void initMoves() {
+void initGeneratedMoves() {
 	initKingMoves();
 	initKnightMoves();
 

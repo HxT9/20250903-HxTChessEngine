@@ -20,7 +20,7 @@ int main()
 
         ofstream o("generatedMoves.bin", ios::binary);
         std::cout << "[+] Init Moves" << std::endl;
-        initMoves();
+        initGeneratedMoves();
         o.write(reinterpret_cast<const char*>(&generatedMoves), sizeof(state_moves_generator_generatedMoves));
         std::cout << "[+] Moves file saved" << std::endl;
         o.close();
