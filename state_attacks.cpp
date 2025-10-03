@@ -164,8 +164,8 @@ void state::updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to
 		case constants::piece::bishop:
 		case constants::piece::queen:
 			//I have to recalculate its attacks
-			resetAttacks(attackerCell, this->isWhite(attackerCell), true);
-			setAttacks(attackerCell, this->isWhite(attackerCell));
+			resetAttacks(attackerCell, isWhite(attackerCell), true);
+			setAttacks(attackerCell, isWhite(attackerCell));
 			break;
 		}
 		_BITBOARD_FOR_END;
@@ -178,8 +178,8 @@ void state::updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to
 		case constants::piece::rook:
 		case constants::piece::bishop:
 		case constants::piece::queen:
-			resetAttacks(attackerCell, this->isWhite(attackerCell), true);
-			setAttacks(attackerCell, this->isWhite(attackerCell));
+			resetAttacks(attackerCell, isWhite(attackerCell), true);
+			setAttacks(attackerCell, isWhite(attackerCell));
 			break;
 		}
 		_BITBOARD_FOR_END;

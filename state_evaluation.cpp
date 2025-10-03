@@ -115,16 +115,16 @@ const int vKingTableEndGame[] = {
 };
 
 int state::getTotalPieceCount() {
-	return _BITBOARD_COUNT_1(core.whitePawns) * vPawn +
-		_BITBOARD_COUNT_1(core.blackPawns) * vPawn +
-		_BITBOARD_COUNT_1(core.whiteRooks) * vRook +
-		_BITBOARD_COUNT_1(core.blackRooks) * vRook +
-		_BITBOARD_COUNT_1(core.whiteKnights) * vKnight +
-		_BITBOARD_COUNT_1(core.blackKnights) * vKnight +
-		_BITBOARD_COUNT_1(core.whiteBishops) * vBishop +
-		_BITBOARD_COUNT_1(core.blackBishops) * vBishop +
-		_BITBOARD_COUNT_1(core.whiteQueens) * vQueen +
-		_BITBOARD_COUNT_1(core.blackQueens) * vQueen;
+	return core.whitePawnCount * vPawn +
+		core.blackPawnCount * vPawn +
+		core.whiteRookCount * vRook +
+		core.blackRookCount * vRook +
+		core.whiteKnightCount * vKnight +
+		core.blackKnightCount * vKnight +
+		core.whiteBishopCount * vBishop +
+		core.blackBishopCount * vBishop +
+		core.whiteQueenCount * vQueen +
+		core.blackQueenCount * vQueen;
 }
 
 int state::getGamePhase() {

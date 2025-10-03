@@ -14,31 +14,34 @@ int state::countAllPossibleMoves(bool isWhite) {
 void state::movePiece(int cellStart, int cellEnd) {
 	setPiece(cellEnd, getPiece(cellStart));
 	clearPiece(cellStart);
+
+	occupied = whitePieces | blackPieces;
+	empty = ~occupied;
 }
 
 uint64_t state::getKingMoves(int cell) {
 	uint64_t moves = 0;
 	if (cell == 4 && !core.whiteKingCastle) {
-		if (core.whiteOORCanCastle && !getBB(occupied, 5) && !getBB(occupied, 6) &&
-			!getBB(core.onTakeBlack, 4) && !getBB(core.onTakeBlack, 5) &&
-			!getBB(core.onTakeBlack, 6) && getBB(core.whiteRooks, 7)) {
+		if (core.whiteOORCanCastle && getBB(empty, 5) && getBB(empty, 6) &&
+			!(getBB(core.onTakeBlack, 4) || getBB(core.onTakeBlack, 5) || getBB(core.onTakeBlack, 6))
+			&& getBB(core.whiteRooks, 7)) {
 			setBB(moves, 6);
 		}
-		if (core.whiteOOORCanCastle && !getBB(occupied, 1) && !getBB(occupied, 2) && !getBB(occupied, 3) &&
-			!getBB(core.onTakeBlack, 4) && !getBB(core.onTakeBlack, 3) &&
-			!getBB(core.onTakeBlack, 2) && !getBB(core.onTakeBlack, 1) && getBB(core.whiteRooks, 0)) {
+		if (core.whiteOOORCanCastle && getBB(empty, 1) && getBB(empty, 2) && getBB(empty, 3) &&
+			!(getBB(core.onTakeBlack, 4) || getBB(core.onTakeBlack, 3) || getBB(core.onTakeBlack, 2) || getBB(core.onTakeBlack, 1))
+			&& getBB(core.whiteRooks, 0)) {
 			setBB(moves, 2);
 		}
 	}
 	if (cell == 60 && !core.blackKingCastle) {
-		if (core.blackOORCanCastle && !getBB(occupied, 61) && !getBB(occupied, 62) &&
-			!getBB(core.onTakeWhite, 60) && !getBB(core.onTakeWhite, 61) &&
-			!getBB(core.onTakeWhite, 62) && getBB(core.blackRooks, 63)) {
+		if (core.blackOORCanCastle && getBB(empty, 61) && getBB(empty, 62) &&
+			!(getBB(core.onTakeWhite, 60) || getBB(core.onTakeWhite, 61) || getBB(core.onTakeWhite, 62))
+			&& getBB(core.blackRooks, 63)) {
 			setBB(moves, 62);
 		}
-		if (core.blackOOORCanCastle && !getBB(occupied, 57) && !getBB(occupied, 58) && !getBB(occupied, 59) &&
-			!getBB(core.onTakeWhite, 60) && !getBB(core.onTakeWhite, 59) &&
-			!getBB(core.onTakeWhite, 58) && !getBB(core.onTakeWhite, 57) && getBB(core.blackRooks, 56)) {
+		if (core.blackOOORCanCastle && getBB(empty, 57) && getBB(empty, 58) && getBB(empty, 59) &&
+			!(getBB(core.onTakeWhite, 60) || getBB(core.onTakeWhite, 59) || getBB(core.onTakeWhite, 58) || getBB(core.onTakeWhite, 57))
+			&& getBB(core.blackRooks, 56)) {
 			setBB(moves, 58);
 		}
 	}
@@ -144,6 +147,9 @@ void state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 	case constants::piece::pawn:
 		if (getBB(core.enPassant, cellEnd)) {
 			isWhite ? clearPiece(cellEnd - 8) : clearPiece(cellEnd + 8);
+			occupied = whitePieces | blackPieces;
+			empty = ~occupied;
+
 			resetAttacks(isWhite ? cellEnd - 8 : cellEnd + 8, isWhite);
 			core.enPassant = 0;
 		}
@@ -190,7 +196,7 @@ void state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 uint64_t state::checkPossibleMoves(int cell, uint64_t possibleMoves) {
 	checkingPosition++;
 	uint64_t ret = possibleMoves;
-	bool isWhite = this->isWhite(cell);
+	bool isWhite = isWhite(cell);
 	_BITBOARD_FOR_BEGIN(possibleMoves) {
 		int i = _BITBOARD_GET_FIRST_1;
 		if (!makeMove(cell, i)) continue;
@@ -219,7 +225,7 @@ bool state::hasAnyLegalMove(bool isWhite) {
 }
 
 bool state::makeMove(int cellStart, int cellEnd) {
-	bool isWhite = this->isWhite(cellStart);
+	bool isWhite = isWhite(cellStart);
 
 #ifndef _DEBUG
 	if (!checkingPosition && isWhite != core.isWhiteTurn) return false;

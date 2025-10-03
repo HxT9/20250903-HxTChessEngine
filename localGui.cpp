@@ -39,52 +39,57 @@ void drawChessBoard() {
 
             ImU32 col = ((x + y) % 2 == 0) ? IM_COL32(240, 217, 181, 255) : IM_COL32(181, 136, 99, 255);
             ImGui::GetWindowDrawList()->AddRectFilled(topLeft, bottomRight, col);
-            if (!s->isEmpty(i)) {
-                ImTextureID tex = 0;
-                switch (s->getPieceType(i)) {
-                case constants::piece::pawn:
-                    tex = s->isWhite(i) ? (ImTextureID)pieceTextures[0] : (ImTextureID)pieceTextures[6];
-                    break;
-                case constants::piece::rook:
-                    tex = s->isWhite(i) ? (ImTextureID)pieceTextures[1] : (ImTextureID)pieceTextures[7];
-                    break;
-                case constants::piece::knight:
-                    tex = s->isWhite(i) ? (ImTextureID)pieceTextures[2] : (ImTextureID)pieceTextures[8];
-                    break;
-                case constants::piece::bishop:
-                    tex = s->isWhite(i) ? (ImTextureID)pieceTextures[3] : (ImTextureID)pieceTextures[9];
-                    break;
-                case constants::piece::queen:
-                    tex = s->isWhite(i) ? (ImTextureID)pieceTextures[4] : (ImTextureID)pieceTextures[10];
-                    break;
-                case constants::piece::king:
-                    tex = s->isWhite(i) ? (ImTextureID)pieceTextures[5] : (ImTextureID)pieceTextures[11];
-                    break;
-                }
-                if (tex ) ImGui::GetWindowDrawList()->AddImage(tex, topLeft, bottomRight);
-            }
 
-            if (s->getBB(possibleMoves, i)) {
+            ImTextureID tex = 0;
+            switch (s->getPieceType(i)) {
+            case constants::piece::pawn:
+                tex = getBB(s->whitePieces, i) ? (ImTextureID)pieceTextures[0] : (ImTextureID)pieceTextures[6];
+                break;
+            case constants::piece::rook:
+                tex = getBB(s->whitePieces, i) ? (ImTextureID)pieceTextures[1] : (ImTextureID)pieceTextures[7];
+                break;
+            case constants::piece::knight:
+                tex = getBB(s->whitePieces, i) ? (ImTextureID)pieceTextures[2] : (ImTextureID)pieceTextures[8];
+                break;
+            case constants::piece::bishop:
+                tex = getBB(s->whitePieces, i) ? (ImTextureID)pieceTextures[3] : (ImTextureID)pieceTextures[9];
+                break;
+            case constants::piece::queen:
+                tex = getBB(s->whitePieces, i) ? (ImTextureID)pieceTextures[4] : (ImTextureID)pieceTextures[10];
+                break;
+            case constants::piece::king:
+                tex = getBB(s->whitePieces, i) ? (ImTextureID)pieceTextures[5] : (ImTextureID)pieceTextures[11];
+                break;
+            }
+            if (tex)
+                ImGui::GetWindowDrawList()->AddImage(tex, topLeft, bottomRight);
+
+            if (getBB(possibleMoves, i)) {
                 ImTextureID tex = (ImTextureID)pieceTextures[12];
                 ImGui::GetWindowDrawList()->AddImage(tex, topLeft, bottomRight);
             }
 
-            /*if (s->getBB(s->core.onTakeWhite, i))
+            /*if (getBB(s->core.onTakeWhite, i))
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 255, 255), 0.f, 0, 6.f);
 
-            if (s->getBB(s->core.onTakeBlack, i))
+            if (getBB(s->core.onTakeBlack, i))
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 0, 0, 255), 0.f, 0, 3.f);*/
 
             if (i == s->core.lastMove[0])
-                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 0, 255), 0.f, 0, 3.f);
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 0, 255, 255), 0.f, 0, 3.f);
             if (i == s->core.lastMove[1])
-                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 200, 0, 255), 0.f, 0, 3.f);
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 0, 200, 255), 0.f, 0, 3.f);
 
 #ifdef _DEBUG
             if (i == s->bestMove[0])
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 255, 0, 255), 0.f, 0, 3.f);
             if (i == s->bestMove[1])
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 200, 0, 255), 0.f, 0, 3.f);
+
+            if (selectedCell >= 0) {
+                if (getBB(s->core.attacks[selectedCell], i))
+                    ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 0, 0, 255), 0.f, 0, 3.f);
+            }
 #endif
 
             if (i == selectedCell)
@@ -94,7 +99,7 @@ void drawChessBoard() {
             sprintf_s(id, "cell_%d", i);
             ImGui::SetCursorScreenPos(topLeft);
             if (ImGui::InvisibleButton(id, ImVec2{ cellSize, cellSize })) {
-                if (selectedCell >= 0 && !s->isEmpty(selectedCell) && s->getBB(possibleMoves, i)) {
+                if (selectedCell >= 0 && getBB(s->occupied, selectedCell) && getBB(possibleMoves, i)) {
                     s->makeMove(selectedCell, i);
                     selectedCell = -1;
                     possibleMoves = 0;

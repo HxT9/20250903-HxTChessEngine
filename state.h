@@ -4,8 +4,14 @@
 #include <memory>
 #include <intrin.h>
 
+//Options
 #define DEFAULT_THREAD_NUMBER 20
 #define ENABLE_BOT 0
+
+//Bitboard utilities
+#define getBB(data, i) data & (1ULL << i)
+#define setBB(data, i) data |= (1ULL << i)
+#define resetBB(data, i) data &= ~(1ULL << i)
 
 #define _BITBOARD_COUNT_1(bb) __popcnt64(bb)
 #define _BITBOARD_FOR_BEGIN(bb) { uint64_t __tempBB = bb; while(__tempBB)
@@ -15,6 +21,11 @@
 #define _BITBOARD_FOR_BEGIN_2(bb) { uint64_t __tempBB2 = bb; while(__tempBB2)
 #define _BITBOARD_GET_FIRST_1_2 _tzcnt_u64(__tempBB2)
 #define _BITBOARD_FOR_END_2 __tempBB2 &= __tempBB2 - 1; }
+
+//Chess utilities
+#define isEmpty(cell) getBB(empty, cell)
+#define isOccupied(cell) getBB(occupied, cell)
+#define isWhite(cell) getBB(whitePieces, cell)
 
 struct Magic {
 	uint64_t mask;
@@ -56,6 +67,11 @@ struct coreData {
 	uint64_t enPassant, onTakeWhite, onTakeBlack;
 	uint64_t attacks[64], attackedFrom[64];
 
+	// Cached piece counts for performance
+	int whitePawnCount, whiteRookCount, whiteKnightCount, whiteBishopCount, whiteQueenCount;
+	int blackPawnCount, blackRookCount, blackKnightCount, blackBishopCount, blackQueenCount;
+	int totalPieceCount;
+
 	bool isWhiteTurn;
 	bool whiteKingCastle, whiteOORCanCastle, whiteOOORCanCastle;
 	bool blackKingCastle, blackOORCanCastle, blackOOORCanCastle;
@@ -87,17 +103,12 @@ public:
 	void saveMove(int from, int to);
 	void undoMove(bool manual = false);
 	void initPieces();
-	int getPiece(char column, int row);
-	inline bool isEmpty(int cell);
-	inline bool isWhite(int cell);
-	inline bool getBB(uint64_t data, int i);
-	inline void setBB(uint64_t& data, int i);
-	inline void resetBB(uint64_t& data, int i);
 	int getPiece(int cell);
 	int getPieceType(int cell);
 	void setPiece(int cell, int piece);
 	void clearPiece(int cell);
 	uint64_t getPieces(int pieceType, int team);
+	void updatePieceCount();
 
 	//moves
 	void movePiece(int cellStart, int cellEnd);

@@ -46,11 +46,13 @@ void state::init()
 {
 	initPieces();
 	initAttacks();
-
+	updatePieceCount();
 	updateBoard();
 }
 
 void state::updateBoard() {
+	
+
 	if (checkingPosition) return;
 
 	//From here only when not checking position
@@ -64,7 +66,7 @@ void state::updateBoard() {
 	auto t1 = std::chrono::high_resolution_clock::now();
 	calcBestMove(6);
 	auto t2 = std::chrono::high_resolution_clock::now();
-	printf("Time: %i\n", std::chrono::duration_cast<std::chrono::milliseconds> (t2 - t1));
+	printf("Time: %lld\n", std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1));
 
 	if (ENABLE_BOT && !core.isWhiteTurn)
 		makeMove(bestMove[0], bestMove[1]); 

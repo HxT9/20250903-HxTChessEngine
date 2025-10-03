@@ -64,41 +64,7 @@ void state::initPieces()
 	empty = ~occupied;
 }
 
-/*
-Get the piece using natural coordinates (A1, G5, F2...)
-row starting with 1
-*/
-int state::getPiece(char column, int row) {
-	if (column >= 97) column -= 97; else column -= 65;
-	if (column < 0 || column > 8) return 255;
-	if (row < 0 || row > 8) return 255;
-
-	return getPiece((row - 1) * 8 + column);
-}
-
-bool state::isEmpty(int cell) {
-	return getBB(empty, cell);
-}
-
-bool state::isWhite(int cell) {
-	return getBB(whitePieces, cell);
-}
-
-bool state::getBB(uint64_t data, int i) {
-	return data & (1ULL << i);
-}
-
-void state::setBB(uint64_t &data, int i) {
-	data |= (1ULL << i);
-}
-
-void state::resetBB(uint64_t& data, int i) {
-	data &= ~(1ULL << i);
-}
-
 int state::getPiece(int cell) {
-	if (isEmpty(cell)) return constants::piece::empty;
-
 	if (isWhite(cell))
 		return constants::team::white | getPieceType(cell);
 	else
@@ -108,62 +74,118 @@ int state::getPiece(int cell) {
 int state::getPieceType(int cell) {
 	if (isEmpty(cell)) return constants::piece::empty;
 
-	uint64_t mask = 1ULL << cell;
-
-	if ((core.whitePawns | core.blackPawns) & mask) return constants::piece::pawn;
-	if ((core.whiteRooks | core.blackRooks)  & mask) return constants::piece::rook;
-	if ((core.whiteKnights | core.blackKnights) & mask) return constants::piece::knight;
-	if ((core.whiteBishops | core.blackBishops) & mask) return constants::piece::bishop;
-	if ((core.whiteQueens | core.blackQueens) & mask) return constants::piece::queen;
-	if ((core.whiteKing | core.blackKing) & mask) return constants::piece::king;
+	if ((core.whitePawns | core.blackPawns) & (1ULL << cell)) return constants::piece::pawn;
+	if ((core.whiteRooks | core.blackRooks)  & (1ULL << cell)) return constants::piece::rook;
+	if ((core.whiteKnights | core.blackKnights) & (1ULL << cell)) return constants::piece::knight;
+	if ((core.whiteBishops | core.blackBishops) & (1ULL << cell)) return constants::piece::bishop;
+	if ((core.whiteQueens | core.blackQueens) & (1ULL << cell)) return constants::piece::queen;
+	if ((core.whiteKing | core.blackKing) & (1ULL << cell)) return constants::piece::king;
 }
 
 void state::setPiece(int cell, int piece) {
 	clearPiece(cell);
 	if (piece & constants::team::white) {
-		if (piece & constants::piece::pawn) core.whitePawns |= (1ULL << cell);
-		if (piece & constants::piece::rook) core.whiteRooks |= (1ULL << cell);
-		if (piece & constants::piece::knight) core.whiteKnights |= (1ULL << cell);
-		if (piece & constants::piece::bishop) core.whiteBishops |= (1ULL << cell);
-		if (piece & constants::piece::queen) core.whiteQueens |= (1ULL << cell);
-		if (piece & constants::piece::king) core.whiteKing |= (1ULL << cell);
+		switch (piece & 0b00111111) {
+		case constants::piece::pawn:
+			core.whitePawns |= (1ULL << cell);
+			core.whitePawnCount++;
+			break;
+		case constants::piece::rook:
+			core.whiteRooks |= (1ULL << cell);
+			core.whiteRookCount++;
+			break;
+
+		case constants::piece::knight:
+			core.whiteKnights |= (1ULL << cell);
+			core.whiteKnightCount++;
+			break;
+
+		case constants::piece::bishop:
+			core.whiteBishops |= (1ULL << cell);
+			core.whiteBishopCount++;
+			break;
+
+		case constants::piece::queen:
+			core.whiteQueens |= (1ULL << cell);
+			core.whiteQueenCount++;
+			break;
+
+		case constants::piece::king:
+			core.whiteKing |= (1ULL << cell);
+			break;
+		}
+		
 		setBB(whitePieces, cell);
 	}
 	else {
-		if (piece & constants::piece::pawn) core.blackPawns |= (1ULL << cell);
-		if (piece & constants::piece::rook) core.blackRooks |= (1ULL << cell);
-		if (piece & constants::piece::knight) core.blackKnights |= (1ULL << cell);
-		if (piece & constants::piece::bishop) core.blackBishops |= (1ULL << cell);
-		if (piece & constants::piece::queen) core.blackQueens |= (1ULL << cell);
-		if (piece & constants::piece::king) core.blackKing |= (1ULL << cell);
+		switch (piece & 0b00111111) {
+		case constants::piece::pawn:
+			core.blackPawns |= (1ULL << cell);
+			core.blackPawnCount++;
+			break;
+
+		case constants::piece::rook:
+			core.blackRooks |= (1ULL << cell);
+			core.blackRookCount++;
+			break;
+
+		case constants::piece::knight:
+			core.blackKnights |= (1ULL << cell);
+			core.blackKnightCount++;
+			break;
+
+		case constants::piece::bishop:
+			core.blackBishops |= (1ULL << cell);
+			core.blackBishopCount++;
+			break;
+
+		case constants::piece::queen:
+			core.blackQueens |= (1ULL << cell);
+			core.blackQueenCount++;
+			break;
+
+		case constants::piece::king:
+			core.blackKing |= (1ULL << cell);
+			break;
+
+		}
 		setBB(blackPieces, cell);
 	}
-	setBB(occupied, cell);
-	resetBB(empty, cell);
 }
 
 void state::clearPiece(int cell) {
-	if (!this->isEmpty(cell)) {
-		if (this->isWhite(cell)) {
+	if (isOccupied(cell)) {
+		if (isWhite(cell)) {
 			switch (getPieceType(cell)) {
 			case constants::piece::pawn:
 				resetBB(core.whitePawns, cell);
+				core.whitePawnCount--;
 				break;
+
 			case constants::piece::rook:
 				resetBB(core.whiteRooks, cell);
+				core.whiteRookCount--;
 				break;
+
 			case constants::piece::knight:
 				resetBB(core.whiteKnights, cell);
+				core.whiteKnightCount--;
 				break;
+
 			case constants::piece::bishop:
 				resetBB(core.whiteBishops, cell);
+				core.whiteBishopCount--;
 				break;
+
 			case constants::piece::queen:
 				resetBB(core.whiteQueens, cell);
+				core.whiteQueenCount--;
 				break;
+
 			case constants::piece::king:
 				resetBB(core.whiteKing, cell);
 				break;
+
 			}
 			resetBB(whitePieces, cell);
 		}
@@ -171,27 +193,36 @@ void state::clearPiece(int cell) {
 			switch (getPieceType(cell)) {
 			case constants::piece::pawn:
 				resetBB(core.blackPawns, cell);
+				core.blackPawnCount--;
 				break;
+
 			case constants::piece::rook:
 				resetBB(core.blackRooks, cell);
+				core.blackRookCount--;
 				break;
+
 			case constants::piece::knight:
 				resetBB(core.blackKnights, cell);
+				core.blackKnightCount--;
 				break;
+
 			case constants::piece::bishop:
 				resetBB(core.blackBishops, cell);
+				core.blackBishopCount--;
 				break;
+
 			case constants::piece::queen:
 				resetBB(core.blackQueens, cell);
+				core.blackQueenCount--;
 				break;
+
 			case constants::piece::king:
 				resetBB(core.blackKing, cell);
 				break;
+
 			}
 			resetBB(blackPieces, cell);
 		}
-		resetBB(occupied, cell);
-		setBB(empty, cell);
 	}
 }
 
@@ -226,4 +257,17 @@ uint64_t state::getPieces(int pieceType, int team) {
 		case constants::piece::king:
 			return core.blackKing;
 		}
+}
+
+void state::updatePieceCount() {
+	core.whitePawnCount = _BITBOARD_COUNT_1(core.whitePawns);
+	core.blackPawnCount = _BITBOARD_COUNT_1(core.blackPawns);
+	core.whiteRookCount = _BITBOARD_COUNT_1(core.whiteRooks);
+	core.blackRookCount = _BITBOARD_COUNT_1(core.blackRooks);
+	core.whiteKnightCount = _BITBOARD_COUNT_1(core.whiteKnights);
+	core.blackKnightCount = _BITBOARD_COUNT_1(core.blackKnights);
+	core.whiteBishopCount = _BITBOARD_COUNT_1(core.whiteBishops);
+	core.blackBishopCount = _BITBOARD_COUNT_1(core.blackBishops);
+	core.whiteQueenCount = _BITBOARD_COUNT_1(core.whiteQueens);
+	core.blackQueenCount = _BITBOARD_COUNT_1(core.blackQueens);
 }
