@@ -8,7 +8,7 @@ void state::saveMove(int from, int to) {
 
 void state::undoMove(bool manual) {
 	if (historyIndex == 0) return;
-	memcpy(&core, &(history[historyIndex - (ENABLE_BOT && manual ? 2 : 1)]), sizeof(coreData));
+	memcpy(&core, &(history[historyIndex - ((ENABLE_BOT && manual) ? 2 : 1)]), sizeof(coreData));
 	historyIndex -=  1;
 
 	isEnded = false;
@@ -143,36 +143,56 @@ void state::setPiece(int cell, int piece) {
 }
 
 void state::clearPiece(int cell) {
-	switch (getPieceType(cell)) {
-	case constants::piece::pawn:
-		resetBB(core.whitePawns, cell);
-		resetBB(core.blackPawns, cell);
-		break;
-	case constants::piece::rook:
-		resetBB(core.whiteRooks, cell);
-		resetBB(core.blackRooks, cell);
-		break;
-	case constants::piece::knight:
-		resetBB(core.whiteKnights, cell);
-		resetBB(core.blackKnights, cell);
-		break;
-	case constants::piece::bishop:
-		resetBB(core.whiteBishops, cell);
-		resetBB(core.blackBishops, cell);
-		break;
-	case constants::piece::queen:
-		resetBB(core.whiteQueens, cell);
-		resetBB(core.blackQueens, cell);
-		break;
-	case constants::piece::king:
-		resetBB(core.whiteKing, cell);
-		resetBB(core.blackKing, cell);
-		break;
+	if (!this->isEmpty(cell)) {
+		if (this->isWhite(cell)) {
+			switch (getPieceType(cell)) {
+			case constants::piece::pawn:
+				resetBB(core.whitePawns, cell);
+				break;
+			case constants::piece::rook:
+				resetBB(core.whiteRooks, cell);
+				break;
+			case constants::piece::knight:
+				resetBB(core.whiteKnights, cell);
+				break;
+			case constants::piece::bishop:
+				resetBB(core.whiteBishops, cell);
+				break;
+			case constants::piece::queen:
+				resetBB(core.whiteQueens, cell);
+				break;
+			case constants::piece::king:
+				resetBB(core.whiteKing, cell);
+				break;
+			}
+			resetBB(whitePieces, cell);
+		}
+		else {
+			switch (getPieceType(cell)) {
+			case constants::piece::pawn:
+				resetBB(core.blackPawns, cell);
+				break;
+			case constants::piece::rook:
+				resetBB(core.blackRooks, cell);
+				break;
+			case constants::piece::knight:
+				resetBB(core.blackKnights, cell);
+				break;
+			case constants::piece::bishop:
+				resetBB(core.blackBishops, cell);
+				break;
+			case constants::piece::queen:
+				resetBB(core.blackQueens, cell);
+				break;
+			case constants::piece::king:
+				resetBB(core.blackKing, cell);
+				break;
+			}
+			resetBB(blackPieces, cell);
+		}
+		resetBB(occupied, cell);
+		setBB(empty, cell);
 	}
-	resetBB(whitePieces, cell);
-	resetBB(blackPieces, cell);
-	resetBB(occupied, cell);
-	setBB(empty, cell);
 }
 
 uint64_t state::getPieces(int pieceType, int team) {

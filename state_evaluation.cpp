@@ -116,7 +116,7 @@ const int vKingTableEndGame[] = {
 
 int state::getTotalPieceCount() {
 	return _BITBOARD_COUNT_1(core.whitePawns) * vPawn +
-		_BITBOARD_COUNT_1(core.whitePawns) * vPawn +
+		_BITBOARD_COUNT_1(core.blackPawns) * vPawn +
 		_BITBOARD_COUNT_1(core.whiteRooks) * vRook +
 		_BITBOARD_COUNT_1(core.blackRooks) * vRook +
 		_BITBOARD_COUNT_1(core.whiteKnights) * vKnight +
@@ -301,12 +301,12 @@ float state::evaluate()
 	switch (getGamePhase()) {
 	case 0b1: //early
 		whiteScore += vKingTableEarlyGame[63 - _tzcnt_u64(core.whiteKing)] * vKingTableMultiplier;
-		blackScore += vPawnTableEndGame[_tzcnt_u64(core.blackKing)] * vKingTableMultiplier;
+		blackScore += vKingTableEarlyGame[_tzcnt_u64(core.blackKing)] * vKingTableMultiplier;
 		break;
 
 	case 0b10: //end
-		whiteScore += vPawnTableEndGame[63 - _tzcnt_u64(core.whiteKing)] * vKingTableMultiplier;
-		blackScore += vPawnTableEndGame[_tzcnt_u64(core.blackKing)] * vKingTableMultiplier;
+		whiteScore += vKingTableEndGame[63 - _tzcnt_u64(core.whiteKing)] * vKingTableMultiplier;
+		blackScore += vKingTableEndGame[_tzcnt_u64(core.blackKing)] * vKingTableMultiplier;
 		break;
 	}
 
