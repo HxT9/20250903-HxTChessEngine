@@ -54,7 +54,7 @@ struct coreData {
 	uint64_t whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKing;
 	uint64_t blackPawns, blackKnights, blackBishops, blackRooks, blackQueens, blackKing;
 	uint64_t enPassant, onTakeWhite, onTakeBlack;
-	uint64_t attackedFrom[64], attacks[64];
+	uint64_t attacks[64], attackedFrom[64];
 
 	bool isWhiteTurn;
 	bool whiteKingCastle, whiteOORCanCastle, whiteOOORCanCastle;

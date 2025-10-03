@@ -1,5 +1,6 @@
 ﻿#include "state.h"
 #include "constants.h"
+#include <chrono>
 
 state::state() {
 	core.whitePawns = 0;
@@ -60,8 +61,10 @@ void state::updateBoard() {
 	float eval = evaluate();
 	printf("%f\n", eval);
 
-	int tp = _BITBOARD_COUNT_1(whitePieces | blackPieces);
+	auto t1 = std::chrono::high_resolution_clock::now();
 	calcBestMove(6);
+	auto t2 = std::chrono::high_resolution_clock::now();
+	printf("Time: %i\n", std::chrono::duration_cast<std::chrono::milliseconds> (t2 - t1));
 
 	if (ENABLE_BOT && !core.isWhiteTurn)
 		makeMove(bestMove[0], bestMove[1]); 
