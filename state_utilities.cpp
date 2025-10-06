@@ -13,12 +13,6 @@ void state::undoMove(bool manual) {
 
 	isEnded = false;
 
-	//derived bitboards
-	whitePieces = core.whitePawns | core.whiteRooks | core.whiteKnights | core.whiteBishops | core.whiteQueens | core.whiteKing;
-	blackPieces = core.blackPawns | core.blackRooks | core.blackKnights | core.blackBishops | core.blackQueens | core.blackKing;
-	occupied = whitePieces | blackPieces;
-	empty = ~occupied;
-
 	if (manual) updateBoard();
 }
 
@@ -58,10 +52,10 @@ void state::initPieces()
 	setBB(core.blackPawns, 49);
 	setBB(core.blackPawns, 48);
 
-	whitePieces = core.whitePawns | core.whiteRooks | core.whiteKnights | core.whiteBishops | core.whiteQueens | core.whiteKing;
-	blackPieces = core.blackPawns | core.blackRooks | core.blackKnights | core.blackBishops | core.blackQueens | core.blackKing;
-	occupied = whitePieces | blackPieces;
-	empty = ~occupied;
+	core.whitePieces = core.whitePawns | core.whiteRooks | core.whiteKnights | core.whiteBishops | core.whiteQueens | core.whiteKing;
+	core.blackPieces = core.blackPawns | core.blackRooks | core.blackKnights | core.blackBishops | core.blackQueens | core.blackKing;
+	core.occupied = core.whitePieces | core.blackPieces;
+	core.empty = ~core.occupied;
 }
 
 int state::getPiece(int cell) {
@@ -115,7 +109,7 @@ void state::setPiece(int cell, int piece) {
 			break;
 		}
 		
-		setBB(whitePieces, cell);
+		setBB(core.whitePieces, cell);
 	}
 	else {
 		switch (piece & 0b00111111) {
@@ -149,7 +143,7 @@ void state::setPiece(int cell, int piece) {
 			break;
 
 		}
-		setBB(blackPieces, cell);
+		setBB(core.blackPieces, cell);
 	}
 }
 
@@ -187,7 +181,7 @@ void state::clearPiece(int cell) {
 				break;
 
 			}
-			resetBB(whitePieces, cell);
+			resetBB(core.whitePieces, cell);
 		}
 		else {
 			switch (getPieceType(cell)) {
@@ -221,7 +215,7 @@ void state::clearPiece(int cell) {
 				break;
 
 			}
-			resetBB(blackPieces, cell);
+			resetBB(core.blackPieces, cell);
 		}
 	}
 }

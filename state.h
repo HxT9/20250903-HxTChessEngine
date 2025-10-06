@@ -23,9 +23,9 @@
 #define _BITBOARD_FOR_END_2 __tempBB2 &= __tempBB2 - 1; }
 
 //Chess utilities
-#define isEmpty(cell) getBB(empty, cell)
-#define isOccupied(cell) getBB(occupied, cell)
-#define isWhite(cell) getBB(whitePieces, cell)
+#define isEmpty(cell) getBB(core.empty, cell)
+#define isOccupied(cell) getBB(core.occupied, cell)
+#define isWhite(cell) getBB(core.whitePieces, cell)
 
 struct Magic {
 	uint64_t mask;
@@ -64,6 +64,7 @@ void initGeneratedMoves();
 struct coreData {
 	uint64_t whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKing;
 	uint64_t blackPawns, blackKnights, blackBishops, blackRooks, blackQueens, blackKing;
+	uint64_t whitePieces, blackPieces, occupied, empty;
 	uint64_t enPassant, onTakeWhite, onTakeBlack;
 	uint64_t attackedFrom[64];
 	uint64_t whitePawnsAttacks, whiteKnightsAttacks, whiteBishopsAttacks, whiteRooksAttacks, whiteQueensAttacks, whiteKingAttacks;
@@ -84,9 +85,6 @@ class state {
 public:
 	coreData core;
 	bool isEnded = false;
-
-	//Derived bitboards
-	uint64_t whitePieces, blackPieces, occupied, empty;
 
 	//other
 	int checkingPosition = 0;
@@ -127,6 +125,7 @@ public:
 	void handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int cellEnd);
 
 	//attacks
+	uint64_t recalculateQueue;
 	uint64_t getAllAttacks(int cell);
 	uint64_t getAllAttacks(bool isWhite);
 	uint64_t getKingAttacks(int cell);
@@ -138,8 +137,12 @@ public:
 	void initAttacks();
 	void setAttacks(int attackerCell, bool isWhite);
 	void resetAttacks(int attackerCell, bool isWhite);
-	void updateAttacksBeforeMove(int pieceType, bool isWhite, int from, int to, bool capture);
-	void updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to, bool capture);
+	void updateAttacksBeforeMove(int pieceType, bool isWhite, int from, int to);
+	void updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to);
+#ifdef _DEBUG
+	uint64_t getAllAttacksOld(bool isWhite);
+	void validateAttacks();
+#endif
 
 	//evaluation
 	float evaluation = 0;

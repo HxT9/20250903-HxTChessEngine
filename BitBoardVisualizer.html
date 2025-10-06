@@ -110,10 +110,10 @@
             if (input.includes('x')) {
                 bitboardValue = parseInt(input, 16);
             } else {
-                bitboardValue = parseInt(input, 10);
+                bitboardValue = BigInt(input);
             }
 
-            if (isNaN(bitboardValue) || bitboardValue < 0 || bitboardValue > 18446744073709551615) {
+            if (isNaN(parseInt(bitboardValue.toString())) || bitboardValue < BigInt(0) || bitboardValue > BigInt("18446744073709551615")) {
                 alert('Please enter a valid uint64 value (0 to 18446744073709551615)');
                 return;
             }

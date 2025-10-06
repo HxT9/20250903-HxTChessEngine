@@ -355,7 +355,7 @@ float state::alphaBeta(float alpha, float beta, int depth) {
         return evaluate();
     }
 
-	uint64_t pieces = core.isWhiteTurn ? whitePieces : blackPieces;
+	uint64_t pieces = core.isWhiteTurn ? core.whitePieces : core.blackPieces;
 	_BITBOARD_FOR_BEGIN(pieces) {
 		int from = _BITBOARD_GET_FIRST_1;
 		uint64_t moves = getPossibleMoves(from);
@@ -411,7 +411,7 @@ void state::calcBestMove(int depth) {
 	std::vector<std::future<void>> futures;
 
 	//Get all moves
-	uint64_t pieces = core.isWhiteTurn ? whitePieces : blackPieces;
+	uint64_t pieces = core.isWhiteTurn ? core.whitePieces : core.blackPieces;
 	_BITBOARD_FOR_BEGIN(pieces) {
 		int from = _BITBOARD_GET_FIRST_1;
 		uint64_t moves = getPossibleMoves(from);

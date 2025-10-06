@@ -34,8 +34,23 @@ state::state() {
 		core.attackedFrom[i] = 0;
 	}
 
+	core.whitePawnsAttacks = 0;
+	core.whiteRooksAttacks = 0;
+	core.whiteKnightsAttacks = 0;
+	core.whiteBishopsAttacks = 0;
+	core.whiteQueensAttacks = 0;
+	core.whiteKingAttacks = 0;
+	core.blackPawnsAttacks = 0;
+	core.blackRooksAttacks = 0;
+	core.blackKnightsAttacks = 0;
+	core.blackBishopsAttacks = 0;
+	core.blackQueensAttacks = 0;
+	core.blackKingAttacks = 0;
+
 	core.lastMove[0] = -1;
 	core.lastMove[1] = -1;
+
+	recalculateQueue = 0;
 }
 
 state::~state() {
@@ -69,6 +84,8 @@ void state::updateBoard() {
 
 	if (ENABLE_BOT && !core.isWhiteTurn)
 		makeMove(bestMove[0], bestMove[1]); 
+
+	validateAttacks();
 }
 
 void state::end(bool isWhiteWin, int endCause) {

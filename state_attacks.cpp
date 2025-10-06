@@ -45,13 +45,13 @@ uint64_t state::getKnightAttacks(int cell) {
 }
 
 uint64_t state::getRookAttacks(int cell, uint64_t occupiedMask) {
-	uint64_t occupancy = (occupiedMask ? occupiedMask : occupied) & generatedMoves.rookMasks[cell];
+	uint64_t occupancy = (occupiedMask ? occupiedMask : core.occupied) & generatedMoves.rookMasks[cell];
 	int index = (occupancy * generatedMoves.rookMagics[cell].magic) >> generatedMoves.rookMagics[cell].shift;
 	return generatedMoves.rookMoves[cell][index];
 }
 
 uint64_t state::getBishopAttacks(int cell, uint64_t occupiedMask) {
-	uint64_t occupancy = (occupiedMask ? occupiedMask : occupied) & generatedMoves.bishopMasks[cell];
+	uint64_t occupancy = (occupiedMask ? occupiedMask : core.occupied) & generatedMoves.bishopMasks[cell];
 	int index = (occupancy * generatedMoves.bishopMagics[cell].magic) >> generatedMoves.bishopMagics[cell].shift;
 	return generatedMoves.bishopMoves[cell][index];
 }
@@ -65,7 +65,7 @@ uint64_t state::getPawnAttacks(int cell) {
 }
 
 void state::initAttacks() {
-	_BITBOARD_FOR_BEGIN(occupied) {
+	_BITBOARD_FOR_BEGIN(core.occupied) {
 		int i = _BITBOARD_GET_FIRST_1;
 		setAttacks(i, isWhite(i));
 		_BITBOARD_FOR_END;
@@ -131,54 +131,72 @@ void state::setAttacks(int attackerCell, bool isWhite)
 	}
 }
 
+/*
+* Resets a piece's attacks from the precomputed tables and returns the cells that were attacked by it.
+*/
 void state::resetAttacks(int attackerCell, bool isWhite)
 {
 	//If pieces of the same type were attacking the same cells as attackerCell, I need to recalculate their attacks
 	uint64_t oldAttacks = getAllAttacks(attackerCell);
-
-	uint64_t pieceTypeMask = 0;
+	uint64_t bb_attackerCell = 1ULL << attackerCell;
 
 	// Clear the attacks from the precomputed tables
 	if (isWhite) {
 		switch (getPieceType(attackerCell)) {
 		case constants::piece::pawn:
 			core.whitePawnsAttacks &= ~oldAttacks;
-			_BITBOARD_FOR_BEGIN(oldAttacks) {
-				int attackedCell = _BITBOARD_GET_FIRST_1;
-				pieceTypeMask = core.attackedFrom[attackedCell] & core.whitePawns;
-				_BITBOARD_FOR_END;
+
+			//If there are other pawns attacking the same cells, I need to reinclude their attacks in the attacks bitboard
+			if (core.whitePawns & ~bb_attackerCell) {
+				_BITBOARD_FOR_BEGIN(oldAttacks) {
+					int attackedCell = _BITBOARD_GET_FIRST_1;
+					if (core.attackedFrom[attackedCell] & (core.whitePawns & ~bb_attackerCell)) setBB(core.whitePawnsAttacks, attackedCell);
+					_BITBOARD_FOR_END;
+				}
 			}
 			break;
 		case constants::piece::rook:
 			core.whiteRooksAttacks &= ~oldAttacks;
-			_BITBOARD_FOR_BEGIN(oldAttacks) {
-				int attackedCell = _BITBOARD_GET_FIRST_1;
-				pieceTypeMask = core.attackedFrom[attackedCell] & core.whiteRooks;
-				_BITBOARD_FOR_END;
+
+			if (core.whiteRooks & ~bb_attackerCell) {
+				_BITBOARD_FOR_BEGIN(oldAttacks) {
+					int attackedCell = _BITBOARD_GET_FIRST_1;
+					if (core.attackedFrom[attackedCell] & (core.whiteRooks & ~bb_attackerCell)) setBB(core.whiteRooksAttacks, attackedCell);
+					_BITBOARD_FOR_END;
+				}
 			}
 			break;
 		case constants::piece::knight:
 			core.whiteKnightsAttacks &= ~oldAttacks;
-			_BITBOARD_FOR_BEGIN(oldAttacks) {
-				int attackedCell = _BITBOARD_GET_FIRST_1;
-				pieceTypeMask = core.attackedFrom[attackedCell] & core.whiteKnights;
-				_BITBOARD_FOR_END;
+
+			if (core.whiteKnights && ~bb_attackerCell) {
+				_BITBOARD_FOR_BEGIN(oldAttacks) {
+					int attackedCell = _BITBOARD_GET_FIRST_1;
+					if (core.attackedFrom[attackedCell] & (core.whiteKnights & ~bb_attackerCell)) setBB(core.whiteKnightsAttacks, attackedCell);
+					_BITBOARD_FOR_END;
+				}
 			}
 			break;
 		case constants::piece::bishop:
 			core.whiteBishopsAttacks &= ~oldAttacks;
-			_BITBOARD_FOR_BEGIN(oldAttacks) {
-				int attackedCell = _BITBOARD_GET_FIRST_1;
-				pieceTypeMask = core.attackedFrom[attackedCell] & core.whiteBishops;
-				_BITBOARD_FOR_END;
+
+			if (core.whiteBishops & ~bb_attackerCell) {
+				_BITBOARD_FOR_BEGIN(oldAttacks) {
+					int attackedCell = _BITBOARD_GET_FIRST_1;
+					if (core.attackedFrom[attackedCell] & (core.whiteBishops & ~bb_attackerCell)) setBB(core.whiteBishopsAttacks, attackedCell);
+					_BITBOARD_FOR_END;
+				}
 			}
 			break;
 		case constants::piece::queen:
 			core.whiteQueensAttacks &= ~oldAttacks;
-			_BITBOARD_FOR_BEGIN(oldAttacks) {
-				int attackedCell = _BITBOARD_GET_FIRST_1;
-				pieceTypeMask = core.attackedFrom[attackedCell] & core.whiteQueens;
-				_BITBOARD_FOR_END;
+
+			if (core.whiteQueens & ~bb_attackerCell) {
+				_BITBOARD_FOR_BEGIN(oldAttacks) { //TODO if no other same type pieces exists, no need to iterate oldattacks
+					int attackedCell = _BITBOARD_GET_FIRST_1;
+					if (core.attackedFrom[attackedCell] & (core.whiteQueens & ~bb_attackerCell)) setBB(core.whiteQueensAttacks, attackedCell);
+					_BITBOARD_FOR_END;
+				}
 			}
 			break;
 		case constants::piece::king:
@@ -190,42 +208,57 @@ void state::resetAttacks(int attackerCell, bool isWhite)
 		switch (getPieceType(attackerCell)) {
 		case constants::piece::pawn:
 			core.blackPawnsAttacks &= ~oldAttacks;
-			_BITBOARD_FOR_BEGIN(oldAttacks) {
-				int attackedCell = _BITBOARD_GET_FIRST_1;
-				pieceTypeMask = core.attackedFrom[attackedCell] & core.blackPawns;
-				_BITBOARD_FOR_END;
+
+			if (core.blackPawns & ~bb_attackerCell) {
+				_BITBOARD_FOR_BEGIN(oldAttacks) {
+					int attackedCell = _BITBOARD_GET_FIRST_1;
+					if (core.attackedFrom[attackedCell] & (core.blackPawns & ~bb_attackerCell)) setBB(core.blackPawnsAttacks, attackedCell);
+					_BITBOARD_FOR_END;
+				}
 			}
 			break;
 		case constants::piece::rook:
 			core.blackRooksAttacks &= ~oldAttacks;
-			_BITBOARD_FOR_BEGIN(oldAttacks) {
-				int attackedCell = _BITBOARD_GET_FIRST_1;
-				pieceTypeMask = core.attackedFrom[attackedCell] & core.blackRooks;
-				_BITBOARD_FOR_END;
+
+			if (core.blackRooks & ~bb_attackerCell) {
+				_BITBOARD_FOR_BEGIN(oldAttacks) {
+					int attackedCell = _BITBOARD_GET_FIRST_1;
+					if (core.attackedFrom[attackedCell] & (core.blackRooks & ~bb_attackerCell)) setBB(core.blackRooksAttacks, attackedCell);
+					_BITBOARD_FOR_END;
+				}
 			}
 			break;
 		case constants::piece::knight:
 			core.blackKnightsAttacks &= ~oldAttacks;
-			_BITBOARD_FOR_BEGIN(oldAttacks) {
-				int attackedCell = _BITBOARD_GET_FIRST_1;
-				pieceTypeMask = core.attackedFrom[attackedCell] & core.blackKnights;
-				_BITBOARD_FOR_END;
+
+			if (core.blackKnights & ~bb_attackerCell) {
+				_BITBOARD_FOR_BEGIN(oldAttacks) {
+					int attackedCell = _BITBOARD_GET_FIRST_1;
+					if (core.attackedFrom[attackedCell] & (core.blackKnights & ~bb_attackerCell)) setBB(core.blackKnightsAttacks, attackedCell);
+					_BITBOARD_FOR_END;
+				}
 			}
 			break;
 		case constants::piece::bishop:
 			core.blackBishopsAttacks &= ~oldAttacks;
-			_BITBOARD_FOR_BEGIN(oldAttacks) {
-				int attackedCell = _BITBOARD_GET_FIRST_1;
-				pieceTypeMask = core.attackedFrom[attackedCell] & core.blackBishops;
-				_BITBOARD_FOR_END;
+
+			if (core.blackBishops & ~bb_attackerCell) {
+				_BITBOARD_FOR_BEGIN(oldAttacks) {
+					int attackedCell = _BITBOARD_GET_FIRST_1;
+					if (core.attackedFrom[attackedCell] & (core.blackBishops & ~bb_attackerCell)) setBB(core.blackBishopsAttacks, attackedCell);
+					_BITBOARD_FOR_END;
+				}
 			}
 			break;
 		case constants::piece::queen:
 			core.blackQueensAttacks &= ~oldAttacks;
-			_BITBOARD_FOR_BEGIN(oldAttacks) {
-				int attackedCell = _BITBOARD_GET_FIRST_1;
-				pieceTypeMask = core.attackedFrom[attackedCell] & core.blackQueens;
-				_BITBOARD_FOR_END;
+
+			if (core.blackQueens & ~bb_attackerCell) {
+				_BITBOARD_FOR_BEGIN(oldAttacks) {
+					int attackedCell = _BITBOARD_GET_FIRST_1;
+					if (core.attackedFrom[attackedCell] & (core.blackQueens & ~bb_attackerCell)) setBB(core.blackQueensAttacks, attackedCell);
+					_BITBOARD_FOR_END;
+				}
 			}
 			break;
 		case constants::piece::king:
@@ -239,49 +272,18 @@ void state::resetAttacks(int attackerCell, bool isWhite)
 		resetBB(core.attackedFrom[attackedCell], attackerCell);
 		_BITBOARD_FOR_END;
 	}
-
-	//Recalculate attacks for other pieces attacking the same cell
-	_BITBOARD_FOR_BEGIN(pieceTypeMask) {
-		int otherAttacker = _BITBOARD_GET_FIRST_1;
-		if (otherAttacker != attackerCell) {
-			setAttacks(otherAttacker, true);
-		}
-		_BITBOARD_FOR_END;
-	}
 }
 
-void state::updateAttacksBeforeMove(int pieceType, bool isWhite, int from, int to, bool capture)
+void state::updateAttacksBeforeMove(int pieceType, bool isWhite, int from, int to)
 {
 	//reset all attacked cells by the starting position
 	resetAttacks(from, isWhite);
 
 	//if there is another piece reset its attacks
-	if (capture)
+	if (getBB(core.occupied, to))
 		resetAttacks(to, !isWhite);
-}
 
-void state::updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to, bool capture) {
-	//set new attacks
-	setAttacks(to, isWhite);
-
-	//If there are sliding pieces attacking destination cell i need to recalculate their attacks
-	if (capture) {
-		_BITBOARD_FOR_BEGIN(core.attackedFrom[to]) {
-			int attackerCell = _BITBOARD_GET_FIRST_1;
-			switch (getPieceType(attackerCell)) {
-			case constants::piece::rook:
-			case constants::piece::bishop:
-			case constants::piece::queen:
-				//I have to recalculate its attacks
-				resetAttacks(attackerCell, isWhite(attackerCell));
-				setAttacks(attackerCell, isWhite(attackerCell));
-				break;
-			}
-			_BITBOARD_FOR_END;
-		}
-	}
-
-	//If starting cell was attacked by sliding pieces, i need to recalculate their attacks
+	//If starting cell was attacked by sliding pieces, i need to reset their attacks and recalculate after move
 	_BITBOARD_FOR_BEGIN(core.attackedFrom[from]) {
 		int attackerCell = _BITBOARD_GET_FIRST_1;
 		switch (getPieceType(attackerCell)) {
@@ -289,12 +291,75 @@ void state::updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to
 		case constants::piece::bishop:
 		case constants::piece::queen:
 			resetAttacks(attackerCell, isWhite(attackerCell));
-			setAttacks(attackerCell, isWhite(attackerCell));
+			recalculateQueue |= (1ULL << attackerCell);
 			break;
 		}
 		_BITBOARD_FOR_END;
 	}
 
+	//If there are sliding pieces attacking destination cell i need to recalculate their attacks
+	_BITBOARD_FOR_BEGIN(core.attackedFrom[to]) {
+		int attackerCell = _BITBOARD_GET_FIRST_1;
+		switch (getPieceType(attackerCell)) {
+		case constants::piece::rook:
+		case constants::piece::bishop:
+		case constants::piece::queen:
+			resetAttacks(attackerCell, isWhite(attackerCell));
+			recalculateQueue |= (1ULL << attackerCell);
+			break;
+		}
+		_BITBOARD_FOR_END;
+	}
+}
+
+void state::updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to) {
+	//set new attacks
+	setAttacks(to, isWhite);
+
+	//Recalculate attacks
+	_BITBOARD_FOR_BEGIN(recalculateQueue) {
+		int toRecalc = _BITBOARD_GET_FIRST_1;
+		setAttacks(toRecalc, isWhite(toRecalc));
+		_BITBOARD_FOR_END;
+	}
+	recalculateQueue = 0;
+
 	core.onTakeWhite = getAllAttacks(true);
 	core.onTakeBlack = getAllAttacks(false);
 }
+
+
+#ifdef _DEBUG
+uint64_t state::getAllAttacksOld(bool isWhite) {
+	uint64_t attacks = 0;
+	if (isWhite) {
+		_BITBOARD_FOR_BEGIN(core.whitePieces) {
+			int i = _BITBOARD_GET_FIRST_1;
+			attacks |= getAllAttacks(i);
+			_BITBOARD_FOR_END;
+		}
+	}
+	else {
+		_BITBOARD_FOR_BEGIN(core.blackPieces) {
+			int i = _BITBOARD_GET_FIRST_1;
+			attacks |= getAllAttacks(i);
+			_BITBOARD_FOR_END;
+		}
+	}
+
+	return attacks;
+}
+
+#include <cassert>
+void state::validateAttacks() {
+	uint64_t newAttacks, oldAttacks;
+
+	newAttacks = getAllAttacks(true);
+	oldAttacks = getAllAttacksOld(true);
+	assert(newAttacks == oldAttacks);
+
+	newAttacks = getAllAttacks(false);
+	oldAttacks = getAllAttacksOld(false);
+	assert(newAttacks == oldAttacks);
+}
+#endif
