@@ -87,7 +87,7 @@ void drawChessBoard() {
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 200, 0, 255), 0.f, 0, 3.f);
 
             if (selectedCell >= 0) {
-                if (getBB(s->core.attacks[selectedCell], i))
+                if (getBB(s->getAllAttacks(selectedCell), i))
                     ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 0, 0, 255), 0.f, 0, 3.f);
             }
 #endif

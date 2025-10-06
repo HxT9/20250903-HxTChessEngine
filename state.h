@@ -65,7 +65,9 @@ struct coreData {
 	uint64_t whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKing;
 	uint64_t blackPawns, blackKnights, blackBishops, blackRooks, blackQueens, blackKing;
 	uint64_t enPassant, onTakeWhite, onTakeBlack;
-	uint64_t attacks[64], attackedFrom[64];
+	uint64_t attackedFrom[64];
+	uint64_t whitePawnsAttacks, whiteKnightsAttacks, whiteBishopsAttacks, whiteRooksAttacks, whiteQueensAttacks, whiteKingAttacks;
+	uint64_t blackPawnsAttacks, blackKnightsAttacks, blackBishopsAttacks, blackRooksAttacks, blackQueensAttacks, blackKingAttacks;
 
 	// Cached piece counts for performance
 	int whitePawnCount, whiteRookCount, whiteKnightCount, whiteBishopCount, whiteQueenCount;
@@ -133,11 +135,11 @@ public:
 	uint64_t getBishopAttacks(int cell, uint64_t occupiedMask = 0);
 	uint64_t getQueenAttacks(int cell, uint64_t occupiedMask = 0);
 	uint64_t getPawnAttacks(int cell);
-	uint64_t getAttackedFrom(int cell);
 	void initAttacks();
 	void setAttacks(int attackerCell, bool isWhite);
-	void resetAttacks(int attackerCell, bool isWhite, bool isPieceStillPresent = false);
-	void updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to);
+	void resetAttacks(int attackerCell, bool isWhite);
+	void updateAttacksBeforeMove(int pieceType, bool isWhite, int from, int to, bool capture);
+	void updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to, bool capture);
 
 	//evaluation
 	float evaluation = 0;

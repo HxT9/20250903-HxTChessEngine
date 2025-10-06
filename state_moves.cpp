@@ -184,8 +184,9 @@ void state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 				break;
 			}
 			if (r_start >= 0) {
+				updateAttacksBeforeMove(constants::piece::rook, isWhite, r_start, r_end, false);
 				movePiece(r_start, r_end);
-				updateAttacksAfterMove(constants::piece::rook, isWhite, r_start, r_end);
+				updateAttacksAfterMove(constants::piece::rook, isWhite, r_start, r_end, false);
 			}
 		}
 
@@ -237,15 +238,18 @@ bool state::makeMove(int cellStart, int cellEnd) {
 		core.lastMove[1] = cellEnd;
 	}
 
-	int pieceType = getPieceType(cellStart);
-
 	saveMove(cellStart, cellEnd);
+
+	int pieceType = getPieceType(cellStart);
+	bool capture = isOccupied(cellEnd);
+
+	updateAttacksBeforeMove(pieceType, isWhite, cellStart, cellEnd, capture);
 
 	handleSpecialMoves(pieceType, isWhite, cellStart, cellEnd);
 
 	movePiece(cellStart, cellEnd);
 
-	updateAttacksAfterMove(pieceType, isWhite, cellStart, cellEnd);
+	updateAttacksAfterMove(pieceType, isWhite, cellStart, cellEnd, capture);
 
 	core.isWhiteTurn = !core.isWhiteTurn;
 

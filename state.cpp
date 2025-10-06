@@ -31,7 +31,6 @@ state::state() {
 	core.blackOOORCanCastle = true;
 
 	for (int i = 0; i < 64; i++) {
-		core.attacks[i] = 0;
 		core.attackedFrom[i] = 0;
 	}
 
