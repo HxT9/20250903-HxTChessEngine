@@ -88,9 +88,6 @@ void drawChessBoard() {
 
             //if (getBB(s->core.onTakeWhite, i))
             //    ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255 * ((i + y) % 2), 255, 0, 255), 0.f, 0, cellSize * 0.15);
-
-            if (getBB(s->core.whiteQueensAttacks, i))
-                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 0, 255), 0.f, 0, cellSize * 0.15);
 #endif
 
             if (i == selectedCell)
