@@ -146,11 +146,11 @@ void state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 	switch (pieceType) {
 	case constants::piece::pawn:
 		if (getBB(core.enPassant, cellEnd)) {
+			resetAttacks(isWhite ? cellEnd - 8 : cellEnd + 8, !isWhite);
 			isWhite ? clearPiece(cellEnd - 8) : clearPiece(cellEnd + 8);
 			core.occupied = core.whitePieces | core.blackPieces;
 			core.empty = ~core.occupied;
 
-			resetAttacks(isWhite ? cellEnd - 8 : cellEnd + 8, isWhite);
 			core.enPassant = 0;
 		}
 		if (abs(cellEnd - cellStart) == 16) setBB(core.enPassant, (cellEnd + cellStart) / 2); else core.enPassant = 0;
