@@ -71,19 +71,19 @@ void state::updateBoard() {
 
 	//From here only when not checking position
 
-	if (!hasAnyLegalMove(core.isWhiteTurn))
-		end(!core.isWhiteTurn, constants::endCause::checkmate);
+	if (!hasAnyLegalMove(!core.isWhiteTurn))
+		end(core.isWhiteTurn, constants::endCause::checkmate);
 
-	float eval = evaluate();
+	float eval = evaluation();
 	printf("%f\n", eval);
 
 	auto t1 = std::chrono::high_resolution_clock::now();
-	search(5);
+	search(6);
 	auto t2 = std::chrono::high_resolution_clock::now();
 	printf("Time: %lld\n", std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1));
 
 	if (ENABLE_BOT && !core.isWhiteTurn)
-		makeMove(bestMove[0], bestMove[1]); 
+		makeMove(bestMove[0], bestMove[1]);
 
 	validateAttacks();
 }

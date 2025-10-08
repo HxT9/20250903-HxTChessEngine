@@ -136,7 +136,7 @@ int state::getGamePhase() {
 	return gamePhase;
 }
 
-float state::evaluate()
+float state::evaluation()
 {
 #if EVALUATION_DEBUG
 	ls_debug = "";
@@ -350,6 +350,11 @@ float state::evaluate()
 	return whiteScore - blackScore;
 }
 
+float state::getSearchScore()
+{
+	return evaluation() * (core.isWhiteTurn ? 1 : -1);
+}
+
 bool state::isZugzwangLikely() {
 	int pieceCount = core.isWhiteTurn ? _BITBOARD_COUNT_1(core.whitePieces) : _BITBOARD_COUNT_1(core.blackPieces);
 	return pieceCount <= 3;
@@ -357,25 +362,14 @@ bool state::isZugzwangLikely() {
 
 float state::alphaBeta(float alpha, float beta, int depth) {
     if (depth == 0 || isEnded) {
-        return evaluate();
-        //return quiesce(alpha, beta, 2);
+		return getSearchScore();
     }
 
 	// Null Move Pruning
 	if (depth >= 3 && !inCheck(core.isWhiteTurn) && !isZugzwangLikely()) {
 		core.isWhiteTurn = !core.isWhiteTurn;
-		updateBoard();
-
-		float nullEval = -alphaBeta(-beta, -beta + 1, 2);
-
-		//Undo
+		float nullEval = -alphaBeta(-beta, -beta + 1, depth - 1 - 2);
 		core.isWhiteTurn = !core.isWhiteTurn;
-		updateBoard();
-
-		if (nullEval >= beta) {
-			printf("Null move pruning at depth %d with eval %f\n", depth, nullEval);
-			return beta;
-		}
 	}
 
 	uint64_t pieces = core.isWhiteTurn ? core.whitePieces : core.blackPieces;
@@ -386,28 +380,20 @@ float state::alphaBeta(float alpha, float beta, int depth) {
 			int to = _BITBOARD_GET_FIRST_1_2;
 
 			if (!makeMove(from, to)) continue;
-			float eval = alphaBeta(alpha, beta, depth - 1);
-
+			float score = -alphaBeta(-beta, -alpha, depth - 1);
 			undoMove();
 
-			if (core.isWhiteTurn) {
-				if (eval >= beta) return beta;
-				if (eval > alpha) {
-					alpha = eval;
-				}
-			}
-			else {
-				if (eval <= alpha) return alpha;
-				if (eval < beta) {
-					beta = eval;
-				}
-			}
+			if (score >= beta)
+				return beta;
+			if (score > alpha)
+				alpha = score;
+			
 			_BITBOARD_FOR_END_2;
 		}
 		_BITBOARD_FOR_END;
 	}
 
-	return core.isWhiteTurn ? alpha : beta;
+	return alpha;
 }
 
 std::mutex evalMutex;
@@ -466,21 +452,13 @@ void state::search(int depth) {
 		f.wait();
 	}
 
-	// Find best move
-	float bestEval = core.isWhiteTurn ? -1e9f : 1e9f;
+	// Find best move - select the move with lowest evaluation (least advantage for opponent)
+	float bestEval = 1e9f;
 	for (const auto& moveEval : moveEvals) {
-		if (core.isWhiteTurn) {
-			if (moveEval.eval > bestEval) {
-				bestEval = moveEval.eval;
-				bestMove[0] = moveEval.from;
-				bestMove[1] = moveEval.to;
-			}
-		} else {
-			if (moveEval.eval < bestEval) {
-				bestEval = moveEval.eval;
-				bestMove[0] = moveEval.from;
-				bestMove[1] = moveEval.to;
-			}
+		if (moveEval.eval < bestEval) {
+			bestEval = moveEval.eval;
+			bestMove[0] = moveEval.from;
+			bestMove[1] = moveEval.to;
 		}
 	}
 

@@ -124,7 +124,7 @@ public:
 	uint64_t checkPossibleMoves(int cell, uint64_t possibleMoves);
 	int countAllPossibleMoves(bool isWhite);
 	bool hasAnyLegalMove(bool isWhite);
-	void handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int cellEnd);
+	bool handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int cellEnd);
 
 	//attacks
 	uint64_t recalculateQueue;
@@ -147,11 +147,11 @@ public:
 #endif
 
 	//evaluation
-	float evaluation = 0;
 	int bestMove[2] = { -1, -1 };
 	inline int getTotalPieceCount();
 	inline int getGamePhase();
-	float evaluate();
+	float evaluation();
+	float getSearchScore();
 	bool isZugzwangLikely();
 	float alphaBeta(float alpha, float beta, int depth);
 	void search(int depth);

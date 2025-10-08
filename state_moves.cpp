@@ -142,7 +142,7 @@ uint64_t state::getPossibleMoves(int cell)
 	return checkPossibleMoves(cell, possibleMoves);
 }
 
-void state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int cellEnd) {
+bool state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int cellEnd) {
 	switch (pieceType) {
 	case constants::piece::pawn:
 		if (getBB(core.enPassant, cellEnd)) {
@@ -155,9 +155,13 @@ void state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 		}
 		if (abs(cellEnd - cellStart) == 16) setBB(core.enPassant, (cellEnd + cellStart) / 2); else core.enPassant = 0;
 		if ((isWhite && cellEnd >= 56) || (!isWhite && cellEnd <= 7)) {
-			clearPiece(cellStart);
+			updateAttacksBeforeMove(constants::piece::pawn, isWhite, cellStart, cellEnd);
 			setPiece(cellStart, constants::piece::queen | (isWhite ? constants::team::white : constants::team::black));
+			movePiece(cellStart, cellEnd);
+			updateAttacksAfterMove(constants::piece::queen, isWhite, cellEnd, cellEnd);
 			pieceType = constants::piece::queen;
+
+			return false;
 		}
 		break;
 
@@ -185,13 +189,20 @@ void state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 			}
 			if (r_start >= 0) {
 				updateAttacksBeforeMove(constants::piece::rook, isWhite, r_start, r_end);
+				updateAttacksBeforeMove(constants::piece::king, isWhite, cellStart, cellEnd);
+				movePiece(cellStart, cellEnd);
 				movePiece(r_start, r_end);
+				updateAttacksAfterMove(constants::piece::king, isWhite, cellStart, cellEnd);
 				updateAttacksAfterMove(constants::piece::rook, isWhite, r_start, r_end);
+
+				return false;
 			}
 		}
 
 		break;
 	}
+
+	return true;
 }
 
 uint64_t state::checkPossibleMoves(int cell, uint64_t possibleMoves) {
@@ -243,15 +254,13 @@ bool state::makeMove(int cellStart, int cellEnd) {
 	int pieceType = getPieceType(cellStart);
 	bool capture = isOccupied(cellEnd);
 
-	updateAttacksBeforeMove(pieceType, isWhite, cellStart, cellEnd);
+	if (handleSpecialMoves(pieceType, isWhite, cellStart, cellEnd)) {
+		updateAttacksBeforeMove(pieceType, isWhite, cellStart, cellEnd);
+		movePiece(cellStart, cellEnd);
+		updateAttacksAfterMove(pieceType, isWhite, cellStart, cellEnd);
+	}
 
-	handleSpecialMoves(pieceType, isWhite, cellStart, cellEnd);
-
-	movePiece(cellStart, cellEnd);
-
-	updateAttacksAfterMove(pieceType, isWhite, cellStart, cellEnd);
-
-	core.isWhiteTurn = !core.isWhiteTurn;
+	core.isWhiteTurn = !isWhite;
 
 	updateBoard();
 
