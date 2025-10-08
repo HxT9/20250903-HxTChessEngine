@@ -350,10 +350,33 @@ float state::evaluate()
 	return whiteScore - blackScore;
 }
 
+bool state::isZugzwangLikely() {
+	int pieceCount = core.isWhiteTurn ? _BITBOARD_COUNT_1(core.whitePieces) : _BITBOARD_COUNT_1(core.blackPieces);
+	return pieceCount <= 3;
+}
+
 float state::alphaBeta(float alpha, float beta, int depth) {
     if (depth == 0 || isEnded) {
         return evaluate();
+        //return quiesce(alpha, beta, 2);
     }
+
+	// Null Move Pruning
+	if (depth >= 3 && !inCheck(core.isWhiteTurn) && !isZugzwangLikely()) {
+		core.isWhiteTurn = !core.isWhiteTurn;
+		updateBoard();
+
+		float nullEval = -alphaBeta(-beta, -beta + 1, 2);
+
+		//Undo
+		core.isWhiteTurn = !core.isWhiteTurn;
+		updateBoard();
+
+		if (nullEval >= beta) {
+			printf("Null move pruning at depth %d with eval %f\n", depth, nullEval);
+			return beta;
+		}
+	}
 
 	uint64_t pieces = core.isWhiteTurn ? core.whitePieces : core.blackPieces;
 	_BITBOARD_FOR_BEGIN(pieces) {
@@ -387,17 +410,11 @@ float state::alphaBeta(float alpha, float beta, int depth) {
 	return core.isWhiteTurn ? alpha : beta;
 }
 
-float state::quiesce(float alpha, float beta) {
-	float eval = evaluate();
-
-	return eval;
-}
-
 std::mutex evalMutex;
 
 using namespace std::chrono_literals;
 
-void state::calcBestMove(int depth) {
+void state::search(int depth) {
 	checkingPosition++;
 	bestMove[0] = -1;
 	bestMove[1] = -1;

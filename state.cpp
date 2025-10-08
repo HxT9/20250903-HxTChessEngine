@@ -78,7 +78,7 @@ void state::updateBoard() {
 	printf("%f\n", eval);
 
 	auto t1 = std::chrono::high_resolution_clock::now();
-	calcBestMove(6);
+	search(5);
 	auto t2 = std::chrono::high_resolution_clock::now();
 	printf("Time: %lld\n", std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1));
 

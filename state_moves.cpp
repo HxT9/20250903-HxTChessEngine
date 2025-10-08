@@ -155,8 +155,8 @@ void state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 		}
 		if (abs(cellEnd - cellStart) == 16) setBB(core.enPassant, (cellEnd + cellStart) / 2); else core.enPassant = 0;
 		if ((isWhite && cellEnd >= 56) || (!isWhite && cellEnd <= 7)) {
-			resetBB(isWhite ? core.whitePawns : core.blackPawns, cellStart);
-			setBB(isWhite ? core.whiteQueens : core.blackQueens, cellStart);
+			clearPiece(cellStart);
+			setPiece(cellStart, constants::piece::queen | (isWhite ? constants::team::white : constants::team::black));
 			pieceType = constants::piece::queen;
 		}
 		break;

@@ -27,6 +27,8 @@
 #define isOccupied(cell) getBB(core.occupied, cell)
 #define isWhite(cell) getBB(core.whitePieces, cell)
 
+#define inCheck(isWhite) ((isWhite) ? (core.onTakeBlack & core.whiteKing) : (core.onTakeWhite & core.blackKing))
+
 struct Magic {
 	uint64_t mask;
 	uint64_t magic;
@@ -150,7 +152,7 @@ public:
 	inline int getTotalPieceCount();
 	inline int getGamePhase();
 	float evaluate();
+	bool isZugzwangLikely();
 	float alphaBeta(float alpha, float beta, int depth);
-	float quiesce(float alpha, float beta);
-	void calcBestMove(int depth);
+	void search(int depth);
 };
