@@ -5,6 +5,7 @@
 #include <intrin.h>
 
 //Options
+#define MAX_SEARCH_DEPTH 6
 #define DEFAULT_THREAD_NUMBER 20
 #define ENABLE_BOT 0
 
