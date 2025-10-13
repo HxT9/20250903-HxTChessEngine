@@ -10,7 +10,7 @@
 #include <chrono>
 #include <mutex>
 
-#define EVALUATION_DEBUG 0
+constexpr bool EVALUATION_DEBUG = false;
 std::string ls_debug;
 
 const int vPawn = 100, vRook = 400, vKnight = 320, vBishop = 330, vQueen = 900, vKing = 0;

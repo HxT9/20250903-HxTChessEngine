@@ -5,9 +5,9 @@
 #include <intrin.h>
 
 //Options
-#define MAX_SEARCH_DEPTH 6
-#define DEFAULT_THREAD_NUMBER 20
-#define ENABLE_BOT 0
+constexpr int MAX_SEARCH_DEPTH = 4;
+constexpr int  DEFAULT_THREAD_NUMBER = 20;
+constexpr bool ENABLE_BOT = false;
 
 //Bitboard utilities
 #define getBB(data, i) data & (1ULL << i)
@@ -16,12 +16,12 @@
 
 #define _BITBOARD_COUNT_1(bb) __popcnt64(bb)
 #define _BITBOARD_FOR_BEGIN(bb) { uint64_t __tempBB = bb; while(__tempBB)
-#define _BITBOARD_GET_FIRST_1 _tzcnt_u64(__tempBB)
-#define _BITBOARD_FOR_END __tempBB &= __tempBB - 1; }
+#define _BITBOARD_GET_FIRST_1 _tzcnt_u64(__tempBB); __tempBB &= __tempBB - 1;
+#define _BITBOARD_FOR_END }
 
 #define _BITBOARD_FOR_BEGIN_2(bb) { uint64_t __tempBB2 = bb; while(__tempBB2)
-#define _BITBOARD_GET_FIRST_1_2 _tzcnt_u64(__tempBB2)
-#define _BITBOARD_FOR_END_2 __tempBB2 &= __tempBB2 - 1; }
+#define _BITBOARD_GET_FIRST_1_2 _tzcnt_u64(__tempBB2); __tempBB2 &= __tempBB2 - 1;
+#define _BITBOARD_FOR_END_2 }
 
 //Chess utilities
 #define isEmpty(cell) getBB(core.empty, cell)
@@ -74,14 +74,14 @@ struct coreData {
 	uint64_t blackPawnsAttacks, blackKnightsAttacks, blackBishopsAttacks, blackRooksAttacks, blackQueensAttacks, blackKingAttacks;
 
 	// Cached piece counts for performance
-	int whitePawnCount, whiteRookCount, whiteKnightCount, whiteBishopCount, whiteQueenCount;
-	int blackPawnCount, blackRookCount, blackKnightCount, blackBishopCount, blackQueenCount;
-	int totalPieceCount;
+	int8_t whitePawnCount, whiteRookCount, whiteKnightCount, whiteBishopCount, whiteQueenCount,
+		blackPawnCount, blackRookCount, blackKnightCount, blackBishopCount, blackQueenCount,
+		totalPieceCount;
 
 	bool isWhiteTurn;
 	bool whiteKingCastle, whiteOORCanCastle, whiteOOORCanCastle;
 	bool blackKingCastle, blackOORCanCastle, blackOOORCanCastle;
-	int lastMove[2];
+	int8_t lastMove[2];
 };
 
 class state {
@@ -90,10 +90,10 @@ public:
 	bool isEnded = false;
 
 	//other
-	int checkingPosition = 0;
+	int checkingPosition;
 
 	coreData history[1024];
-	int historyIndex = 0;
+	int historyIndex;
 
 	state();
 	~state();

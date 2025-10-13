@@ -245,6 +245,9 @@ bool state::makeMove(int cellStart, int cellEnd) {
 	if (isEnded) return false;
 
 	if (!checkingPosition) {
+		if (!(getBB(getPossibleMoves(cellStart), cellEnd)))
+			return false;
+
 		core.lastMove[0] = cellStart;
 		core.lastMove[1] = cellEnd;
 	}

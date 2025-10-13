@@ -50,6 +50,9 @@ state::state() {
 	core.lastMove[0] = -1;
 	core.lastMove[1] = -1;
 
+	checkingPosition = 0;
+	historyIndex = 0;
+
 	recalculateQueue = 0;
 }
 
@@ -71,8 +74,10 @@ void state::updateBoard() {
 
 	//From here only when not checking position
 
-	if (!hasAnyLegalMove(!core.isWhiteTurn))
-		end(core.isWhiteTurn, constants::endCause::checkmate);
+	if (!hasAnyLegalMove(core.isWhiteTurn))
+		end(!core.isWhiteTurn, constants::endCause::checkmate);
+
+	if (isEnded) return;
 
 	float eval = evaluation();
 	printf("%f\n", eval);
@@ -80,12 +85,14 @@ void state::updateBoard() {
 	auto t1 = std::chrono::high_resolution_clock::now();
 	search(MAX_SEARCH_DEPTH);
 	auto t2 = std::chrono::high_resolution_clock::now();
-	printf("Time: %lld\n", std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1));
+	printf("Time: %llu\n", std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
 
 	if (ENABLE_BOT && !core.isWhiteTurn)
 		makeMove(bestMove[0], bestMove[1]);
 
+#ifdef _DEBUG
 	validateAttacks();
+#endif
 }
 
 void state::end(bool isWhiteWin, int endCause) {
