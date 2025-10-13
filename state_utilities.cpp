@@ -1,7 +1,7 @@
 ﻿#include "state.h"
 #include "constants.h"
 
-void state::saveMove(int from, int to) {
+void state::savePosition() {
 	memcpy(&(history[historyIndex]), &core, sizeof(coreData));
 	historyIndex ++;
 }
@@ -9,7 +9,7 @@ void state::saveMove(int from, int to) {
 void state::undoMove(bool manual) {
 	if (historyIndex == 0) return;
 	memcpy(&core, &(history[historyIndex - ((ENABLE_BOT && manual) ? 2 : 1)]), sizeof(coreData));
-	historyIndex -=  1;
+	historyIndex -= (ENABLE_BOT && manual) ? 2 : 1;
 
 	isEnded = false;
 

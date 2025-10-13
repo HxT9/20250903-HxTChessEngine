@@ -103,7 +103,7 @@ public:
 	bool makeMove(int cellStart, int cellEnd);
 
 	//utilities
-	void saveMove(int from, int to);
+	void savePosition();
 	void undoMove(bool manual = false);
 	void initPieces();
 	int getPiece(int cell);

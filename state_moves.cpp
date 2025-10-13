@@ -252,7 +252,7 @@ bool state::makeMove(int cellStart, int cellEnd) {
 		core.lastMove[1] = cellEnd;
 	}
 
-	saveMove(cellStart, cellEnd);
+	savePosition();
 
 	int pieceType = getPieceType(cellStart);
 	bool capture = isOccupied(cellEnd);

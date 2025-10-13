@@ -65,6 +65,7 @@ void state::init()
 	initAttacks();
 	updatePieceCount();
 	updateBoard();
+	savePosition();
 }
 
 void state::updateBoard() {
