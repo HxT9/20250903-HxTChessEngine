@@ -3,11 +3,13 @@
 #include <cstdio>
 #include <memory>
 #include <intrin.h>
+#include <vector>
 
 //Options
-constexpr int MAX_SEARCH_DEPTH = 4;
+constexpr int MAX_SEARCH_DEPTH = 6;
 constexpr int  DEFAULT_THREAD_NUMBER = 20;
 constexpr bool ENABLE_BOT = false;
+constexpr bool ENABLE_HINTS = true;
 
 //Bitboard utilities
 #define getBB(data, i) data & (1ULL << i)
@@ -15,6 +17,8 @@ constexpr bool ENABLE_BOT = false;
 #define resetBB(data, i) data &= ~(1ULL << i)
 
 #define _BITBOARD_COUNT_1(bb) __popcnt64(bb)
+#define _BITBOARD_TO_POSITION(bb) _tzcnt_u64(bb)
+
 #define _BITBOARD_FOR_BEGIN(bb) { uint64_t __tempBB = bb; while(__tempBB)
 #define _BITBOARD_GET_FIRST_1 _tzcnt_u64(__tempBB); __tempBB &= __tempBB - 1;
 #define _BITBOARD_FOR_END }
@@ -24,9 +28,9 @@ constexpr bool ENABLE_BOT = false;
 #define _BITBOARD_FOR_END_2 }
 
 //Chess utilities
-#define isEmpty(cell) getBB(core.empty, cell)
-#define isOccupied(cell) getBB(core.occupied, cell)
-#define isWhite(cell) getBB(core.whitePieces, cell)
+#define isCellEmpty(cell) getBB(core.empty, cell)
+#define isCellOccupied(cell) getBB(core.occupied, cell)
+#define isCellWhite(cell) getBB(core.whitePieces, cell)
 
 #define inCheck(isWhite) ((isWhite) ? (core.onTakeBlack & core.whiteKing) : (core.onTakeWhite & core.blackKing))
 
@@ -38,8 +42,8 @@ struct Magic {
 };
 
 struct state_moves_generator_generatedMoves {
-	uint64_t whitePawnEvalOccupancy[64], blackPawnEvalOccupancy[64];
-	uint64_t whitePawnEvalNoDefense[64], blackPawnEvalNoDefense[64];
+	uint64_t whitePawnEvalOccupancy[64], blackPawnEvalOccupancy[64]; // All next cell in same file (for doubled pawns or passed pawns)
+	uint64_t whitePawnEvalNoDefense[64], blackPawnEvalNoDefense[64]; // Pawns that are not defended by other pawns
 	uint64_t singlePawnEval[64];
 	uint64_t whiteKingPawnShield[64], blackKingPawnShield[64];
 
@@ -64,6 +68,16 @@ extern state_moves_generator_generatedMoves generatedMoves;
 
 void initGeneratedMoves();
 
+struct MoveEval {
+	int from, to;
+	int eval;
+};
+
+struct MoveEvalPerPiece {
+	MoveEval moveEval[64];
+	size_t moveEvalCount;
+};
+
 struct coreData {
 	uint64_t whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKing;
 	uint64_t blackPawns, blackKnights, blackBishops, blackRooks, blackQueens, blackKing;
@@ -82,6 +96,12 @@ struct coreData {
 	bool whiteKingCastle, whiteOORCanCastle, whiteOOORCanCastle;
 	bool blackKingCastle, blackOORCanCastle, blackOOORCanCastle;
 	int8_t lastMove[2];
+
+	int evaluation;
+	int cellEvaluation[64];
+
+	MoveEval bestMove = MoveEval{ -1, -1, 0 };
+	//MoveEvalPerPiece moveEvals[64]; 
 };
 
 class state {
@@ -91,6 +111,7 @@ public:
 
 	//other
 	int checkingPosition;
+	bool searching = false;
 
 	coreData history[1024];
 	int historyIndex;
@@ -98,6 +119,8 @@ public:
 	state();
 	~state();
 	void init();
+	bool preMove_updateBoard(int cellStart, int cellEnd, bool &isWhite, int &pieceType, bool &capture, int &capturedPieceType);
+	void postMove_updateBoard(int cellStart, int cellEnd, bool isWhite, int pieceType, bool capture, int capturedPieceType);
 	void updateBoard();
 	void end(bool isWhiteWin, int endCause);
 	bool makeMove(int cellStart, int cellEnd);
@@ -137,6 +160,7 @@ public:
 	uint64_t getBishopAttacks(int cell, uint64_t occupiedMask = 0);
 	uint64_t getQueenAttacks(int cell, uint64_t occupiedMask = 0);
 	uint64_t getPawnAttacks(int cell);
+	uint64_t getAttackedFrom(int cell);
 	void initAttacks();
 	void setAttacks(int attackerCell, bool isWhite);
 	void resetAttacks(int attackerCell, bool isWhite);
@@ -144,16 +168,17 @@ public:
 	void updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to);
 #ifdef _DEBUG
 	uint64_t getAllAttacksOld(bool isWhite);
-	void validateAttacks();
 #endif
 
 	//evaluation
-	int bestMove[2] = { -1, -1 };
 	inline int getTotalPieceCount();
 	inline int getGamePhase();
-	float evaluation();
-	float getSearchScore();
+	void initEvaluation();
+	void updateEvaluation(int from, int to, int pieceType, bool isWhite, bool capture, int capturedPieceType);
+	int calculateCellEvaluation(int cell, int pieceType, bool isWhite);
+	int getSearchScore();
 	bool isZugzwangLikely();
-	float alphaBeta(float alpha, float beta, int depth);
+	int alphaBeta(float alpha, float beta, int depth);
 	void search(int depth);
+	void searchPosition();
 };

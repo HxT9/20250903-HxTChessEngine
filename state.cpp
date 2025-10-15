@@ -1,6 +1,5 @@
 ﻿#include "state.h"
 #include "constants.h"
-#include <chrono>
 
 state::state() {
 	core.whitePawns = 0;
@@ -30,9 +29,8 @@ state::state() {
 	core.blackOORCanCastle = true;
 	core.blackOOORCanCastle = true;
 
-	for (int i = 0; i < 64; i++) {
+	for (int i = 0; i < 64; i++)
 		core.attackedFrom[i] = 0;
-	}
 
 	core.whitePawnsAttacks = 0;
 	core.whiteRooksAttacks = 0;
@@ -54,7 +52,13 @@ state::state() {
 	historyIndex = 0;
 
 	recalculateQueue = 0;
+
+	core.evaluation = 0;
+	for (int i = 0; i < 64; i++)
+		core.cellEvaluation[i] = 0;
 }
+
+
 
 state::~state() {
 }
@@ -63,37 +67,57 @@ void state::init()
 {
 	initPieces();
 	initAttacks();
+	initEvaluation();
 	updatePieceCount();
 	updateBoard();
 	savePosition();
 }
 
+bool state::preMove_updateBoard(int cellStart, int cellEnd, bool& isWhite, int& pieceType, bool& capture, int& capturedPieceType)
+{
+	isWhite = isCellWhite(cellStart);
+
+#ifndef _DEBUG
+	if (!checkingPosition && isWhite != core.isWhiteTurn) return false;
+#endif
+	if (isEnded) return false;
+
+	if (!checkingPosition && !searching) {
+		if (!(getBB(getPossibleMoves(cellStart), cellEnd)))
+			return false;
+
+		core.lastMove[0] = cellStart;
+		core.lastMove[1] = cellEnd;
+	}
+
+	pieceType = getPieceType(cellStart);
+	capture = isCellOccupied(cellEnd);
+	if (capture)
+		capturedPieceType = getPieceType(cellEnd);
+	else
+		capturedPieceType = 0;
+
+	savePosition();
+
+	return true;
+}
+
+void state::postMove_updateBoard(int cellStart, int cellEnd, bool isWhite, int pieceType, bool capture, int capturedPieceType) {
+	core.isWhiteTurn = !isWhite;
+}
+
 void state::updateBoard() {
-	
-
-	if (checkingPosition) return;
-
-	//From here only when not checking position
-
-	if (!hasAnyLegalMove(core.isWhiteTurn))
+	if (inCheck(core.isWhiteTurn) && !hasAnyLegalMove(core.isWhiteTurn))
 		end(!core.isWhiteTurn, constants::endCause::checkmate);
 
 	if (isEnded) return;
 
-	float eval = evaluation();
-	printf("%f\n", eval);
+	printf("%i\n", core.evaluation);
 
-	auto t1 = std::chrono::high_resolution_clock::now();
-	search(MAX_SEARCH_DEPTH);
-	auto t2 = std::chrono::high_resolution_clock::now();
-	printf("Time: %llu\n", std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
+	searchPosition();
 
 	if (ENABLE_BOT && !core.isWhiteTurn)
-		makeMove(bestMove[0], bestMove[1]);
-
-#ifdef _DEBUG
-	validateAttacks();
-#endif
+		makeMove(core.bestMove.from, core.bestMove.to);
 }
 
 void state::end(bool isWhiteWin, int endCause) {

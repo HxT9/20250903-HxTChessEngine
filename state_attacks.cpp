@@ -61,13 +61,18 @@ uint64_t state::getQueenAttacks(int cell, uint64_t occupiedMask) {
 }
 
 uint64_t state::getPawnAttacks(int cell) {
-	return isWhite(cell) ? generatedMoves.whitePawnCaptures[cell] : generatedMoves.blackPawnCaptures[cell];
+	return isCellWhite(cell) ? generatedMoves.whitePawnCaptures[cell] : generatedMoves.blackPawnCaptures[cell];
+}
+
+uint64_t state::getAttackedFrom(int cell)
+{
+	return 0;
 }
 
 void state::initAttacks() {
 	_BITBOARD_FOR_BEGIN(core.occupied) {
 		int i = _BITBOARD_GET_FIRST_1;
-		setAttacks(i, isWhite(i));
+		setAttacks(i, isCellWhite(i));
 		_BITBOARD_FOR_END;
 	}
 
@@ -290,7 +295,7 @@ void state::updateAttacksBeforeMove(int pieceType, bool isWhite, int from, int t
 		case constants::piece::rook:
 		case constants::piece::bishop:
 		case constants::piece::queen:
-			resetAttacks(attackerCell, isWhite(attackerCell));
+			resetAttacks(attackerCell, isCellWhite(attackerCell));
 			recalculateQueue |= (1ULL << attackerCell);
 			break;
 		}
@@ -304,7 +309,7 @@ void state::updateAttacksBeforeMove(int pieceType, bool isWhite, int from, int t
 		case constants::piece::rook:
 		case constants::piece::bishop:
 		case constants::piece::queen:
-			resetAttacks(attackerCell, isWhite(attackerCell));
+			resetAttacks(attackerCell, isCellWhite(attackerCell));
 			recalculateQueue |= (1ULL << attackerCell);
 			break;
 		}
@@ -319,7 +324,7 @@ void state::updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to
 	//Recalculate attacks
 	_BITBOARD_FOR_BEGIN(recalculateQueue) {
 		int toRecalc = _BITBOARD_GET_FIRST_1;
-		setAttacks(toRecalc, isWhite(toRecalc));
+		setAttacks(toRecalc, isCellWhite(toRecalc));
 		_BITBOARD_FOR_END;
 	}
 	recalculateQueue = 0;
@@ -348,18 +353,5 @@ uint64_t state::getAllAttacksOld(bool isWhite) {
 	}
 
 	return attacks;
-}
-
-#include <cassert>
-void state::validateAttacks() {
-	uint64_t newAttacks, oldAttacks;
-
-	newAttacks = getAllAttacks(true);
-	oldAttacks = getAllAttacksOld(true);
-	assert(newAttacks == oldAttacks);
-
-	newAttacks = getAllAttacks(false);
-	oldAttacks = getAllAttacksOld(false);
-	assert(newAttacks == oldAttacks);
 }
 #endif

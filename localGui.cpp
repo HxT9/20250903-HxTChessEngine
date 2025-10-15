@@ -8,8 +8,10 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include <string>
 
-int w = 200;
+int w = 600;
+bool lb_rotated = false;
 
 state* s;
 ID3D11ShaderResourceView* pieceTextures[13];
@@ -33,7 +35,7 @@ void drawChessBoard() {
 
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
-            int i = y * 8 + x;
+            int i = !lb_rotated ? y * 8 + x : (7 - y) * 8 + (7 - x);
             ImVec2 topLeft{ x * cellSize, (7 - y) * cellSize };
             ImVec2 bottomRight{ topLeft.x + cellSize, topLeft.y + cellSize };
 
@@ -80,15 +82,14 @@ void drawChessBoard() {
             if (i == s->core.lastMove[1])
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 0, 200, 255), 0.f, 0, cellSize * 0.15);
 
-#ifdef _DEBUG
-            if (i == s->bestMove[0])
-                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 255, 0, 255), 0.f, 0, cellSize * 0.15);
-            if (i == s->bestMove[1])
-                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 200, 0, 255), 0.f, 0, cellSize * 0.15);
+            if (ENABLE_HINTS) {
+                if (i == s->core.bestMove.from)
+                    ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 255, 0, 255), 0.f, 0, cellSize * 0.15);
+                if (i == s->core.bestMove.to)
+                    ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 200, 0, 255), 0.f, 0, cellSize * 0.15);
+            }
 
-            //if (getBB(s->core.onTakeWhite, i))
-            //    ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255 * ((i + y) % 2), 255, 0, 255), 0.f, 0, cellSize * 0.15);
-#endif
+			ImGui::GetWindowDrawList()->AddText(ImVec2{ topLeft.x + 5, topLeft.y + 5 }, IM_COL32(0, 0, 0, 100), std::to_string(s->core.cellEvaluation[i]).c_str());
 
             if (i == selectedCell)
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 0, 255), 0.f, 0, cellSize * 0.15);
@@ -116,6 +117,10 @@ void handleKeyDown(MSG msg) {
     case 'Z':
         if (GetKeyState(VK_CONTROL) & 0x8000)
             s->undoMove(true);
+        break;
+    case 'R':
+		lb_rotated = !lb_rotated;
+        break;
     }
 }
 

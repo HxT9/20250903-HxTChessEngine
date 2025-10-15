@@ -46,25 +46,25 @@ uint64_t state::getKingMoves(int cell) {
 		}
 	}
 
-	moves |= generatedMoves.kingMoves[cell] & ~(isWhite(cell) ? core.whitePieces | core.onTakeBlack : core.blackPieces | core.onTakeWhite);
+	moves |= generatedMoves.kingMoves[cell] & ~(isCellWhite(cell) ? core.whitePieces | core.onTakeBlack : core.blackPieces | core.onTakeWhite);
 
 	return moves;
 }
 
 uint64_t state::getKnightMoves(int cell) {
-	return generatedMoves.knightMoves[cell] & ~(isWhite(cell) ? core.whitePieces : core.blackPieces);
+	return generatedMoves.knightMoves[cell] & ~(isCellWhite(cell) ? core.whitePieces : core.blackPieces);
 }
 
 uint64_t state::getRookMoves(int cell) {
 	uint64_t occupancy = core.occupied & generatedMoves.rookMasks[cell];
 	int index = (occupancy * generatedMoves.rookMagics[cell].magic) >> generatedMoves.rookMagics[cell].shift;
-	return generatedMoves.rookMoves[cell][index] & ~(isWhite(cell) ? core.whitePieces : core.blackPieces);
+	return generatedMoves.rookMoves[cell][index] & ~(isCellWhite(cell) ? core.whitePieces : core.blackPieces);
 }
 
 uint64_t state::getBishopMoves(int cell) {
 	uint64_t occupancy = core.occupied & generatedMoves.bishopMasks[cell];
 	int index = (occupancy * generatedMoves.bishopMagics[cell].magic) >> generatedMoves.bishopMagics[cell].shift;
-	return generatedMoves.bishopMoves[cell][index] & ~(isWhite(cell) ? core.whitePieces : core.blackPieces);
+	return generatedMoves.bishopMoves[cell][index] & ~(isCellWhite(cell) ? core.whitePieces : core.blackPieces);
 }
 
 uint64_t state::getQueenMoves(int cell) {
@@ -73,7 +73,7 @@ uint64_t state::getQueenMoves(int cell) {
 
 uint64_t state::getPawnMoves(int cell) {
 	uint64_t moves = 0;
-	if (isWhite(cell)) {
+	if (isCellWhite(cell)) {
 		uint64_t push = generatedMoves.whitePawnPushes[cell];
 		if (!(core.occupied & push)) moves |= push;
 		if (push && !(core.occupied & push) && !(core.occupied & generatedMoves.whitePawnDoublePushes[cell])) moves |= generatedMoves.whitePawnDoublePushes[cell];
@@ -93,7 +93,7 @@ uint64_t state::getPawnMoves(int cell) {
 uint64_t state::getPossibleMoves(int cell)
 {
 	uint64_t possibleMoves = 0;
-	if (isEmpty(cell)) return possibleMoves;
+	if (isCellEmpty(cell)) return possibleMoves;
 
 	uint64_t mask = 1ULL << cell;
 	bool isWhite = core.whitePieces & mask;
@@ -147,7 +147,16 @@ bool state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 	case constants::piece::pawn:
 		if (getBB(core.enPassant, cellEnd)) {
 			resetAttacks(isWhite ? cellEnd - 8 : cellEnd + 8, !isWhite);
-			isWhite ? clearPiece(cellEnd - 8) : clearPiece(cellEnd + 8);
+			if (isWhite) {
+				clearPiece(cellEnd - 8);
+				core.evaluation -= core.cellEvaluation[cellEnd - 8];
+				core.cellEvaluation[cellEnd - 8] = 0;
+			}
+			else {
+				clearPiece(cellEnd + 8);
+				core.evaluation -= core.cellEvaluation[cellEnd + 8];
+				core.cellEvaluation[cellEnd + 8] = 0;
+			}
 			core.occupied = core.whitePieces | core.blackPieces;
 			core.empty = ~core.occupied;
 
@@ -159,6 +168,12 @@ bool state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 			setPiece(cellStart, constants::piece::queen | (isWhite ? constants::team::white : constants::team::black));
 			movePiece(cellStart, cellEnd);
 			updateAttacksAfterMove(constants::piece::queen, isWhite, cellEnd, cellEnd);
+
+			core.evaluation -= core.cellEvaluation[cellStart];
+			core.cellEvaluation[cellStart] = 0;
+			core.cellEvaluation[cellEnd] = calculateCellEvaluation(cellEnd, constants::piece::queen, isWhite);
+			core.evaluation += core.cellEvaluation[cellEnd];
+
 			pieceType = constants::piece::queen;
 
 			return false;
@@ -195,6 +210,16 @@ bool state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 				updateAttacksAfterMove(constants::piece::king, isWhite, cellStart, cellEnd);
 				updateAttacksAfterMove(constants::piece::rook, isWhite, r_start, r_end);
 
+				core.evaluation -= core.cellEvaluation[cellStart];
+				core.cellEvaluation[cellStart] = 0;
+				core.cellEvaluation[cellEnd] = calculateCellEvaluation(cellEnd, constants::piece::king, isWhite);
+				core.evaluation += core.cellEvaluation[cellEnd];
+
+				core.evaluation -= core.cellEvaluation[r_start];
+				core.cellEvaluation[r_start] = 0;
+				core.cellEvaluation[r_end] = calculateCellEvaluation(r_end, constants::piece::rook, isWhite);
+				core.evaluation += core.cellEvaluation[r_end];
+
 				return false;
 			}
 		}
@@ -208,7 +233,7 @@ bool state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 uint64_t state::checkPossibleMoves(int cell, uint64_t possibleMoves) {
 	checkingPosition++;
 	uint64_t ret = possibleMoves;
-	bool isWhite = isWhite(cell);
+	bool isWhite = isCellWhite(cell);
 	_BITBOARD_FOR_BEGIN(possibleMoves) {
 		int i = _BITBOARD_GET_FIRST_1;
 		if (!makeMove(cell, i)) continue;
@@ -237,35 +262,23 @@ bool state::hasAnyLegalMove(bool isWhite) {
 }
 
 bool state::makeMove(int cellStart, int cellEnd) {
-	bool isWhite = isWhite(cellStart);
+	bool isWhite, capture;
+	int pieceType, capturedPieceType;
 
-#ifndef _DEBUG
-	if (!checkingPosition && isWhite != core.isWhiteTurn) return false;
-#endif
-	if (isEnded) return false;
-
-	if (!checkingPosition) {
-		if (!(getBB(getPossibleMoves(cellStart), cellEnd)))
-			return false;
-
-		core.lastMove[0] = cellStart;
-		core.lastMove[1] = cellEnd;
-	}
-
-	savePosition();
-
-	int pieceType = getPieceType(cellStart);
-	bool capture = isOccupied(cellEnd);
+	if (!preMove_updateBoard(cellStart, cellEnd, isWhite, pieceType, capture, capturedPieceType))
+		return false;
 
 	if (handleSpecialMoves(pieceType, isWhite, cellStart, cellEnd)) {
 		updateAttacksBeforeMove(pieceType, isWhite, cellStart, cellEnd);
 		movePiece(cellStart, cellEnd);
 		updateAttacksAfterMove(pieceType, isWhite, cellStart, cellEnd);
+		if (!checkingPosition)
+			updateEvaluation(cellStart, cellEnd, pieceType, isWhite, capture, capturedPieceType);
 	}
+	postMove_updateBoard(cellStart, cellEnd, isWhite, pieceType, capture, capturedPieceType);
 
-	core.isWhiteTurn = !isWhite;
-
-	updateBoard();
+	if (!checkingPosition && !searching)
+		updateBoard();
 
 	return true;
 }

@@ -144,6 +144,7 @@
       <AdditionalIncludeDirectories>G:\Home\Coding\repos\20250903 HxTChessEngine\imgui</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <Optimization>MaxSpeed</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

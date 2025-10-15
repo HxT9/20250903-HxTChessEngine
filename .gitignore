@@ -370,3 +370,4 @@ FodyWeavers.xsd
 /imgui/.gitattributes
 /imgui/.gitignore
 /imgui/LICENSE.txt
+/imgui.ini

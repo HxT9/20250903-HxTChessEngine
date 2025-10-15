@@ -12,8 +12,6 @@ void state::undoMove(bool manual) {
 	historyIndex -= (ENABLE_BOT && manual) ? 2 : 1;
 
 	isEnded = false;
-
-	if (manual) updateBoard();
 }
 
 void state::initPieces()
@@ -59,14 +57,14 @@ void state::initPieces()
 }
 
 int state::getPiece(int cell) {
-	if (isWhite(cell))
+	if (isCellWhite(cell))
 		return constants::team::white | getPieceType(cell);
 	else
 		return constants::team::black | getPieceType(cell);
 }
 
 int state::getPieceType(int cell) {
-	if (isEmpty(cell)) return constants::piece::empty;
+	if (isCellEmpty(cell)) return constants::piece::empty;
 
 	if ((core.whitePawns | core.blackPawns) & (1ULL << cell)) return constants::piece::pawn;
 	if ((core.whiteRooks | core.blackRooks)  & (1ULL << cell)) return constants::piece::rook;
@@ -148,8 +146,8 @@ void state::setPiece(int cell, int piece) {
 }
 
 void state::clearPiece(int cell) {
-	if (isOccupied(cell)) {
-		if (isWhite(cell)) {
+	if (isCellOccupied(cell)) {
+		if (isCellWhite(cell)) {
 			switch (getPieceType(cell)) {
 			case constants::piece::pawn:
 				resetBB(core.whitePawns, cell);
