@@ -4,11 +4,12 @@
 #include <memory>
 #include <intrin.h>
 #include <vector>
+#include <string>
 
 //Options
 constexpr int MAX_SEARCH_DEPTH = 6;
 constexpr int  DEFAULT_THREAD_NUMBER = 20;
-constexpr bool ENABLE_BOT = false;
+constexpr bool ENABLE_BOT = true;
 constexpr bool ENABLE_HINTS = true;
 
 //Bitboard utilities
@@ -33,6 +34,8 @@ constexpr bool ENABLE_HINTS = true;
 #define isCellWhite(cell) getBB(core.whitePieces, cell)
 
 #define inCheck(isWhite) ((isWhite) ? (core.onTakeBlack & core.whiteKing) : (core.onTakeWhite & core.blackKing))
+
+#define isManual !(checkingPosition || searching)
 
 struct Magic {
 	uint64_t mask;
@@ -63,10 +66,23 @@ struct state_moves_generator_generatedMoves {
 	uint64_t blackPawnDoublePushes[64];
 	uint64_t blackPawnCaptures[64];
 };
-
 extern state_moves_generator_generatedMoves generatedMoves;
 
 void initGeneratedMoves();
+
+class openingTree {
+public:
+	openingTree* parent;
+	std::string move;
+	std::vector<openingTree*> nextMoves;
+
+	openingTree();
+	openingTree(openingTree* _parent, std::string _move);
+	bool operator==(const openingTree& other);
+	void addNextMove(std::vector<std::string> _move);
+	void readFromFile(const char* file);
+	openingTree* getNext(std::string move);
+};
 
 struct MoveEval {
 	int from, to;
@@ -88,46 +104,56 @@ struct coreData {
 	uint64_t blackPawnsAttacks, blackKnightsAttacks, blackBishopsAttacks, blackRooksAttacks, blackQueensAttacks, blackKingAttacks;
 
 	// Cached piece counts for performance
-	int8_t whitePawnCount, whiteRookCount, whiteKnightCount, whiteBishopCount, whiteQueenCount,
+	uint8_t whitePawnCount, whiteRookCount, whiteKnightCount, whiteBishopCount, whiteQueenCount,
 		blackPawnCount, blackRookCount, blackKnightCount, blackBishopCount, blackQueenCount,
 		totalPieceCount;
 
 	bool isWhiteTurn;
 	bool whiteKingCastle, whiteOORCanCastle, whiteOOORCanCastle;
 	bool blackKingCastle, blackOORCanCastle, blackOOORCanCastle;
-	int8_t lastMove[2];
+	uint8_t lastMove[2];
 
-	int evaluation;
-	int cellEvaluation[64];
+	int32_t evaluation;
+	uint32_t cellEvaluation[64];
+};
 
+struct secondaryData {
 	MoveEval bestMove = MoveEval{ -1, -1, 0 };
-	//MoveEvalPerPiece moveEvals[64]; 
+	MoveEvalPerPiece moveEvals[64];
+
+	uint64_t possibleMoves[64];
+
+	openingTree* cur_opening;
 };
 
 class state {
 public:
 	coreData core;
+	secondaryData otherData;
+	std::vector<std::string> pgn;
+	openingTree openingBook;
+
 	bool isEnded = false;
+
+	coreData coreDataHistory[1024];
+	secondaryData otherDataHistory[1024];
+	int historyIndex;
 
 	//other
 	int checkingPosition;
 	bool searching = false;
-
-	coreData history[1024];
-	int historyIndex;
 
 	state();
 	~state();
 	void init();
 	bool preMove_updateBoard(int cellStart, int cellEnd, bool &isWhite, int &pieceType, bool &capture, int &capturedPieceType);
 	void postMove_updateBoard(int cellStart, int cellEnd, bool isWhite, int pieceType, bool capture, int capturedPieceType);
-	void updateBoard();
+	void updateBoard(int cellStart, int cellEnd, bool isWhite, int pieceType, bool capture);
 	void end(bool isWhiteWin, int endCause);
-	bool makeMove(int cellStart, int cellEnd);
 
 	//utilities
 	void savePosition();
-	void undoMove(bool manual = false);
+	void undoMove();
 	void initPieces();
 	int getPiece(int cell);
 	int getPieceType(int cell);
@@ -135,6 +161,10 @@ public:
 	void clearPiece(int cell);
 	uint64_t getPieces(int pieceType, int team);
 	void updatePieceCount();
+	const char* cellToNotation(int cell);
+	uint64_t getTypeBB(int pieceType, bool isWhite);
+	char* getPgn(int cellStart, int cellEnd, bool isWhite, int pieceType, bool capture);
+	bool getMove(std::string pgnMove, int& cellStart, int& cellEnd, bool isWhite);
 
 	//moves
 	void movePiece(int cellStart, int cellEnd);
@@ -148,7 +178,9 @@ public:
 	uint64_t checkPossibleMoves(int cell, uint64_t possibleMoves);
 	int countAllPossibleMoves(bool isWhite);
 	bool hasAnyLegalMove(bool isWhite);
-	bool handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int cellEnd);
+	void updatePossibleMoves();
+	bool handleSpecialMoves(int pieceType, bool isWhite, int cellStart, int cellEnd);
+	bool makeMove(int cellStart, int cellEnd);
 
 	//attacks
 	uint64_t recalculateQueue;
@@ -166,19 +198,16 @@ public:
 	void resetAttacks(int attackerCell, bool isWhite);
 	void updateAttacksBeforeMove(int pieceType, bool isWhite, int from, int to);
 	void updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to);
-#ifdef _DEBUG
-	uint64_t getAllAttacksOld(bool isWhite);
-#endif
 
 	//evaluation
 	inline int getTotalPieceCount();
 	inline int getGamePhase();
 	void initEvaluation();
 	void updateEvaluation(int from, int to, int pieceType, bool isWhite, bool capture, int capturedPieceType);
-	int calculateCellEvaluation(int cell, int pieceType, bool isWhite);
-	int getSearchScore();
+	int16_t calculateCellEvaluation(int cell, int pieceType, bool isWhite);
+	int16_t getSearchScore();
 	bool isZugzwangLikely();
-	int alphaBeta(float alpha, float beta, int depth);
+	int16_t alphaBeta(float alpha, float beta, int depth);
 	void search(int depth);
 	void searchPosition();
 };

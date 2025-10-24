@@ -1,5 +1,6 @@
 ﻿#include "state.h"
 #include "constants.h"
+#include <iostream>
 
 state::state() {
 	core.whitePawns = 0;
@@ -58,8 +59,6 @@ state::state() {
 		core.cellEvaluation[i] = 0;
 }
 
-
-
 state::~state() {
 }
 
@@ -69,8 +68,17 @@ void state::init()
 	initAttacks();
 	initEvaluation();
 	updatePieceCount();
-	updateBoard();
 	savePosition();
+
+	updatePossibleMoves();
+
+	std::cout << "[+] Load Openings" << std::endl;
+	openingBook.readFromFile("openings.txt");
+	std::cout << "[+] Done" << std::endl;
+
+	otherData.cur_opening = &openingBook;
+	if (!(openingBook.getNext("") && getMove(openingBook.getNext("")->move, otherData.bestMove.from, otherData.bestMove.to, core.isWhiteTurn)))
+		searchPosition();
 }
 
 bool state::preMove_updateBoard(int cellStart, int cellEnd, bool& isWhite, int& pieceType, bool& capture, int& capturedPieceType)
@@ -106,18 +114,31 @@ void state::postMove_updateBoard(int cellStart, int cellEnd, bool isWhite, int p
 	core.isWhiteTurn = !isWhite;
 }
 
-void state::updateBoard() {
-	if (inCheck(core.isWhiteTurn) && !hasAnyLegalMove(core.isWhiteTurn))
-		end(!core.isWhiteTurn, constants::endCause::checkmate);
-
+void state::updateBoard(int cellStart, int cellEnd, bool isWhite, int pieceType, bool capture) {
 	if (isEnded) return;
+
+	if (inCheck(core.isWhiteTurn) && !hasAnyLegalMove(core.isWhiteTurn)) {
+		end(!core.isWhiteTurn, constants::endCause::checkmate);
+	}
+
+	updatePossibleMoves();
+
+	char* _pgn = getPgn(cellStart, cellEnd, isWhite, pieceType, capture);
+	pgn.push_back(std::string(_pgn));
+	
+	if (otherData.cur_opening) {
+		otherData.cur_opening = otherData.cur_opening->getNext(_pgn);
+		if (!(otherData.cur_opening && otherData.cur_opening->getNext("") && getMove(otherData.cur_opening->getNext("")->move, otherData.bestMove.from, otherData.bestMove.to, core.isWhiteTurn)))
+			searchPosition();
+	}
+	else {
+		searchPosition();
+	}
 
 	printf("%i\n", core.evaluation);
 
-	searchPosition();
-
 	if (ENABLE_BOT && !core.isWhiteTurn)
-		makeMove(core.bestMove.from, core.bestMove.to);
+		makeMove(otherData.bestMove.from, otherData.bestMove.to);
 }
 
 void state::end(bool isWhiteWin, int endCause) {

@@ -10,7 +10,11 @@
 #include "stb_image.h"
 #include <string>
 
+#ifdef _DEBUG
+int w = 200;
+#else
 int w = 600;
+#endif
 bool lb_rotated = false;
 
 state* s;
@@ -83,9 +87,9 @@ void drawChessBoard() {
                 ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 0, 200, 255), 0.f, 0, cellSize * 0.15);
 
             if (ENABLE_HINTS) {
-                if (i == s->core.bestMove.from)
+                if (i == s->otherData.bestMove.from)
                     ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 255, 0, 255), 0.f, 0, cellSize * 0.15);
-                if (i == s->core.bestMove.to)
+                if (i == s->otherData.bestMove.to)
                     ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, IM_COL32(0, 200, 0, 255), 0.f, 0, cellSize * 0.15);
             }
 
@@ -116,7 +120,7 @@ void handleKeyDown(MSG msg) {
     switch (msg.wParam) {
     case 'Z':
         if (GetKeyState(VK_CONTROL) & 0x8000)
-            s->undoMove(true);
+            s->undoMove();
         break;
     case 'R':
 		lb_rotated = !lb_rotated;

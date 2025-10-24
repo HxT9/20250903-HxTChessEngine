@@ -9,16 +9,14 @@ Variables:
 #include "interfaces.h"
 #include <fstream>
 
-using namespace std;
-
 int main()
 {
     std::cout << "[+] Load Moves" << std::endl;
-    ifstream i("generatedMoves.bin", ios::binary);
+    std::ifstream i("generatedMoves.bin", std::ios::binary);
     if (i.fail()) {
         std::cout << "[+] Moves file not found" << std::endl;
 
-        ofstream o("generatedMoves.bin", ios::binary);
+        std::ofstream o("generatedMoves.bin", std::ios::binary);
         std::cout << "[+] Init Moves" << std::endl;
         initGeneratedMoves();
         o.write(reinterpret_cast<const char*>(&generatedMoves), sizeof(state_moves_generator_generatedMoves));
@@ -31,11 +29,6 @@ int main()
         i.close();
     }
     std::cout << "[+] Done" << std::endl;
-
-
-
-    //initKingMoves();
-    //initKnightMoves();
 
     //uciLoop();
     localGui();

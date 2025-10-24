@@ -1,15 +1,21 @@
 ﻿#include "state.h"
 #include "constants.h"
+#include <string>
 
 void state::savePosition() {
-	memcpy(&(history[historyIndex]), &core, sizeof(coreData));
+	memcpy(&(coreDataHistory[historyIndex]), &core, sizeof(coreData));
+	if (isManual) memcpy(&(otherDataHistory[historyIndex]), &otherData, sizeof(secondaryData));
 	historyIndex ++;
 }
 
-void state::undoMove(bool manual) {
+void state::undoMove() {
 	if (historyIndex == 0) return;
-	memcpy(&core, &(history[historyIndex - ((ENABLE_BOT && manual) ? 2 : 1)]), sizeof(coreData));
-	historyIndex -= (ENABLE_BOT && manual) ? 2 : 1;
+	memcpy(&core, &(coreDataHistory[historyIndex - 1]), sizeof(coreData));
+	if (isManual) {
+		memcpy(&otherData, &(otherDataHistory[historyIndex - 1]), sizeof(secondaryData));
+		pgn.erase(pgn.end() - 1);
+	}
+	historyIndex -= 1;
 
 	isEnded = false;
 }
@@ -262,4 +268,245 @@ void state::updatePieceCount() {
 	core.blackBishopCount = _BITBOARD_COUNT_1(core.blackBishops);
 	core.whiteQueenCount = _BITBOARD_COUNT_1(core.whiteQueens);
 	core.blackQueenCount = _BITBOARD_COUNT_1(core.blackQueens);
+}
+
+const char* state::cellToNotation(int cell)
+{
+	static const char* notation[64] = {
+		"a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
+		"a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
+		"a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
+		"a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
+		"a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
+		"a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
+		"a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
+		"a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"
+	};
+	return notation[cell];
+}
+
+uint64_t state::getTypeBB(int pieceType, bool isWhite) {
+	switch (pieceType) {
+	case constants::piece::pawn:
+		return isWhite ? core.whitePawns : core.blackPawns;
+	case constants::piece::rook:
+		return isWhite ? core.whiteRooks : core.blackRooks;
+	case constants::piece::knight:
+		return isWhite ? core.whiteKnights : core.blackKnights;
+	case constants::piece::bishop:
+		return isWhite ? core.whiteBishops : core.blackBishops;
+	case constants::piece::queen:
+		return isWhite ? core.whiteQueens : core.blackQueens;
+	case constants::piece::king:
+		return isWhite ? core.whiteKing : core.blackKing;
+	default:
+		return 0;
+	}
+}
+
+char* state::getPgn(int cellStart, int cellEnd, bool isWhite, int pieceType, bool capture) {
+	std::string pgn = "";
+	bool isCastle = false;
+
+	switch (pieceType) {
+	case constants::piece::pawn:
+		break;
+	case constants::piece::rook:
+		pgn = "R";
+		break;
+	case constants::piece::knight:
+		pgn = "N";
+		break;
+	case constants::piece::bishop:
+		pgn = "B";
+		break;
+	case constants::piece::queen:
+		pgn = "Q";
+		break;
+	case constants::piece::king:
+		if (abs(cellEnd - cellStart) == 2) {
+			isCastle = true;
+			if (cellEnd == 62 || cellEnd == 6)
+				pgn = "O-O";
+			else
+				pgn = "O-O-O";
+		}
+		else {
+			pgn = "K";
+		}
+		break;
+	}
+
+	//check conflicts
+	bool conflict = false;
+	bool uniqueInFile = true;
+	bool uniqueInRank = true;
+	_BITBOARD_FOR_BEGIN(getTypeBB(pieceType, isWhite)) {
+		int i = _BITBOARD_GET_FIRST_1;
+		if (i != cellEnd && (getBB(otherData.possibleMoves[i], cellEnd))) {
+			conflict = true;
+			if (cellStart % 8 == i % 8)
+				uniqueInFile = false;
+			if (cellStart / 8 == i / 8)
+				uniqueInRank = false;
+		}			
+		_BITBOARD_FOR_END;
+	}
+	if (conflict) {
+		if (uniqueInFile) pgn += 'a' + (cellStart % 8);
+		else if (uniqueInRank) pgn += '1' + (cellStart / 8);
+		else {
+			pgn += 'a' + (cellStart % 8);
+			pgn += '1' + (cellStart / 8);
+		}
+	}
+
+	if (!isCastle) {
+		if (capture)
+			pgn += "x";
+
+		pgn += cellToNotation(cellEnd);
+
+		if (pieceType == constants::piece::pawn && (cellEnd >= 56 || cellEnd < 8)) {
+			//promotion
+			pgn += "=";
+			pgn += "Q"; //always queen for now
+		}
+
+		if (isEnded) {
+			pgn += "#";
+		}
+		else if (inCheck(!isWhite)) {
+			pgn += "+";
+		}
+	}
+
+	return _strdup(pgn.c_str());
+}
+
+bool state::getMove(std::string pgnMove, int& cellStart, int& cellEnd, bool isWhite)
+{
+	if (pgnMove == "O-O" || pgnMove == "O-O-O") {
+		//castle
+		if (isWhite) {
+			if (pgnMove == "O-O") {
+				cellStart = 4;
+				cellEnd = 6;
+			}
+			else {
+				cellStart = 4;
+				cellEnd = 2;
+			}
+		}
+		else {
+			if (pgnMove == "O-O") {
+				cellStart = 60;
+				cellEnd = 62;
+			}
+			else {
+				cellStart = 60;
+				cellEnd = 58;
+			}
+		}
+		return true;
+	}
+
+	uint64_t pieces;
+	char row, col;
+	switch (pgnMove[0]) {
+	case 'R':
+		pieces = getTypeBB(constants::piece::rook, isWhite);
+		pgnMove = pgnMove.substr(1);
+		break;
+	case 'N':
+		pieces = getTypeBB(constants::piece::knight, isWhite);
+		pgnMove = pgnMove.substr(1);
+		break;
+	case 'B':
+		pieces = getTypeBB(constants::piece::bishop, isWhite);
+		pgnMove = pgnMove.substr(1);
+		break;
+	case 'Q':
+		pieces = getTypeBB(constants::piece::queen, isWhite);
+		pgnMove = pgnMove.substr(1);
+		break;
+	case 'K':
+		pieces = getTypeBB(constants::piece::king, isWhite);
+		pgnMove = pgnMove.substr(1);
+		break;
+	default:
+		pieces = getTypeBB(constants::piece::pawn, isWhite);
+		break;
+	}
+
+	//Remove last characters for check/mate/promotion
+	if (pgnMove.size() > 0 && (pgnMove.back() == '+' || pgnMove.back() == '#')) {
+		pgnMove = pgnMove.substr(0, pgnMove.size() - 1);
+	}
+	if (pgnMove.size() >= 4 && pgnMove[pgnMove.size() - 2] == '=') {
+		//promotion
+		pgnMove = pgnMove.substr(0, pgnMove.size() - 2);
+	}
+
+	if (pgnMove.size() < 2) return false;
+	cellEnd = (pgnMove[pgnMove.size() - 1] - '1') * 8 + (pgnMove[pgnMove.size() - 2] - 'a');
+	pgnMove = pgnMove.substr(0, pgnMove.size() - 2);
+
+	if (pgnMove.size() > 0 && pgnMove[pgnMove.size() - 1] == 'x') {
+		pgnMove = pgnMove.substr(0, pgnMove.size() - 1);
+	}
+
+	int size = pgnMove.size();
+	switch (size) {
+	case 0:
+		//no disambiguation
+		_BITBOARD_FOR_BEGIN(pieces) {
+			int i = _BITBOARD_GET_FIRST_1;
+			if (getBB(otherData.possibleMoves[i], cellEnd)) {
+				cellStart = i;
+				return true;
+			}
+			_BITBOARD_FOR_END;
+		}
+		break;
+
+	case 1:
+		//file or rank disambiguation
+		if (pgnMove[0] >= 'a' && pgnMove[0] <= 'h') {
+			//file
+			int file = pgnMove[0] - 'a';
+			_BITBOARD_FOR_BEGIN(pieces) {
+				int i = _BITBOARD_GET_FIRST_1;
+				if ((i % 8 == file) && getBB(otherData.possibleMoves[i], cellEnd)) {
+					cellStart = i;
+					return true;
+				}
+				_BITBOARD_FOR_END;
+			}
+		}
+		else if (pgnMove[0] >= '1' && pgnMove[0] <= '8') {
+			//rank
+			int rank = pgnMove[0] - '1';
+			_BITBOARD_FOR_BEGIN(pieces) {
+				int i = _BITBOARD_GET_FIRST_1;
+				if ((i / 8 == rank) && getBB(otherData.possibleMoves[i], cellEnd)) {
+					cellStart = i;
+					return true;
+				}
+				_BITBOARD_FOR_END;
+			}
+		}
+		break;
+
+	case 2:
+		//file and rank disambiguation
+		int file = pgnMove[0] - 'a';
+		int rank = pgnMove[1] - '1';
+		int cell = rank * 8 + file;
+		if (getBB(pieces, cell) && getBB(otherData.possibleMoves[cell], cellEnd)) {
+			cellStart = cell;
+			return true;
+		}
+		break;
+	}
 }

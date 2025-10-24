@@ -4,107 +4,95 @@
 #include <chrono>
 #include <mutex>
 
-const int vPawn = 100, vRook = 400, vKnight = 320, vBishop = 330, vQueen = 900, vKing = 0;
-const int vDoublePown = -20, vPassedPawn = 20, vPassedPawnWithNoDefense = 50, vSinglePawn = -30;
-const int vRookOpenFile = 5, vRookLaserKing = 20, vRookLaserQueen = 10;
-const int vBishopLaserKing = 20, vBishopLaserQueen = 10;
-const int vQueenLaserKing = 20, vQueenLaserQueen = 10;
-const int vCastle = 80;
-const int vMobilityPawn = 5, vMobilityRook = 5, vMobilityKnight = 5, vMobilityBishop = 5, vMobilityQueen = 5, vMobilityKing = 10;
-const int vKingShield = 20;
-const int vCheckMate = 1000000000;
+const int16_t vPawn = 100, vRook = 400, vKnight = 320, vBishop = 330, vQueen = 900, vKing = 0;
+const int16_t vDoublePown = -20, vPassedPawn = 20, vPassedPawnWithNoDefense = 50, vSinglePawn = -30;
+const int16_t vRookOpenFile = 5, vRookLaserKing = 20, vRookLaserQueen = 10;
+const int16_t vBishopLaserKing = 20, vBishopLaserQueen = 10;
+const int16_t vQueenLaserKing = 20, vQueenLaserQueen = 10;
+const int16_t vCastle = 80;
+const int16_t vMobilityPawn = 5, vMobilityRook = 5, vMobilityKnight = 5, vMobilityBishop = 5, vMobilityQueen = 5, vMobilityKing = 10;
+const int16_t vKingShield = 10;
+const int16_t vCheckMate = 32767;
 
-constexpr int bbbbb = -5;
-constexpr int bbbb = -4;
-constexpr int bbb = -3;
-constexpr int bb = -2;
-constexpr int b = -1;
-constexpr int n = 0;
-constexpr int g = 1;
-constexpr int gg = 2;
-constexpr int ggg = 3;
-constexpr int gggg = 3;
-constexpr int ggggg = 5;
-
-const int vPawnTableEarlyGame[] = {
-	n, n, n, n, n, n, n, n,
-	ggggg, ggggg, ggggg, ggggg, ggggg, ggggg, ggggg, ggggg,
-	g, g, gg, ggg, ggg, gg, g, g,
-	g, g, g, ggg, ggg, g, g, g,
-	n, n, n, ggg, ggg, n, n, n,
-	g, b, b, n, n, b, b, g,
-	n, g, g, bb, bb, g, g, n,
-	n, n, n, n, n, n, n, n
+const int16_t vPawnTableEarlyGame[] = {
+	0, 0, 0, 0, 0, 0, 0, 0,
+	5, 5, 5, 5, 5, 5, 5, 5,
+	1, 1, 2, 3, 3, 2, 1, 1,
+	1, 1, 1, 3, 3, 1, 1, 1,
+	0, 0, 0, 3, 3, 0, 0, 0,
+	1, -1, -1, 0, 0, -1, -1, 1,
+	0, 1, 1, -2, -2, 1, 1, 0,
+	0, 0, 0, 0, 0, 0, 0, 0
 };
-const int vPawnTableEndGame[] = {
-	n, n, n, n, n, n, n, n,
-	ggggg, ggggg, ggggg, ggggg, ggggg, ggggg, ggggg, ggggg,
-	gggg, gggg, gggg, gggg, gggg, gggg, gggg, gggg,
-	ggg, ggg, ggg, ggg, ggg, ggg, ggg, ggg,
-	gg, gg, gg, gg, gg, gg, gg, gg,
-	n, n, n, n, n, n, n, n,
-	bb, bbb, bbb, bbbbb, bbbbb, bbb, bbb, bb,
-	n, n, n, n, n, n, n, n
+const int16_t vPawnTableEndGame[] = {
+	0, 0, 0, 0, 0, 0, 0, 0,
+	5, 5, 5, 5, 5, 5, 5, 5,
+	4, 4, 4, 4, 4, 4, 4, 4,
+	3, 3, 3, 3, 3, 3, 3, 3,
+	2, 2, 2, 2, 2, 2, 2, 2,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	-2, -3, -3, -5, -5, -3, -3, -2,
+	0, 0, 0, 0, 0, 0, 0, 0
 };
-const int vKnightTable[] = {
-	bbbbb, bbbb, bbb, bbb, bbb, bbb, bbbb, bbbbb,
-	bbbb, b, n, n, n, n, b, bbbb,
-	bbb, n, gg, ggg, ggg, gg, n, bbb,
-	bbb, gg, gg, gg, gg, gg, gg, bbb,
-	bbb, n, g, gg, gg, gg, n, bbb,
-	bbb, g, gg, gg, gg, gg, g, bbb,
-	bbbb, b, n, g, g, n, b, bbbb,
-	bbbbb, b, b, b, b, b, b, bbbbb
+const int16_t vKnightTable[] = {
+	-5, -4, -3, -3, -3, -3, -4, -5,
+	-4, -1, 0, 0, 0, 0, -1, -4,
+	-3, 0, 2, 3, 3, 2, 0, -3,
+	-3, 2, 2, 2, 2, 2, 2, -3,
+	-3, 0, 1, 2, 2, 2, 0, -3,
+	-3, 1, 2, 2, 2, 2, 1, -3,
+	-4, -1, 0, 1, 1, 0, -1, -4,
+	-5, -1, -1, -1, -1, -1, -1, -5
 };
-const int vBishopTable[] = {
-	bb, b, b, b, b, b, b, bb,
-	b, n, n, n, n, n, n, b,
-	b, n, g, gg, gg, g, n, b,
-	b, g, g, g, g, g, g, b,
-	b, n, g, g, g, g, n, b,
-	b, g, g, g, g, g, g, b,
-	b, g, n, n, n, n, g, b,
-	bb, b, b, b, b, b, b, bb
+const int16_t vBishopTable[] = {
+	-2, -1, -1, -1, -1, -1, -1, -2,
+	-1, 0, 0, 0, 0, 0, 0, -1,
+	-1, 0, 1, 2, 2, 1, 0, -1,
+	-1, 1, 1, 1, 1, 1, 1, -1,
+	-1, 0, 1, 1, 1, 1, 0, -1,
+	-1, 1, 1, 1, 1, 1, 1, -1,
+	-1, 1, 0, 0, 0, 0, 1, -1,
+	-2, -1, -1, -1, -1, -1, -1, -2
 };
-const int vRookTable[] = {
-	n, n, n, n, n, n, n, n,
-	g, gg, gg, gg, gg, gg, gg, g,
-	b, n, n, n, n, n, n, b,
-	b, n, n, n, n, n, n, b,
-	b, n, n, n, n, n, n, b,
-	b, n, n, n, n, n, n, b,
-	b, n, n, n, n, n, n, b,
-	n, n, n, g, g, n, n, n
+const int16_t vRookTable[] = {
+	0, 0, 0, 0, 0, 0, 0, 0,
+	1, 2, 2, 2, 2, 2, 2, 1,
+	-1, 0, 0, 0, 0, 0, 0, -1,
+	-1, 0, 0, 0, 0, 0, 0, -1,
+	-1, 0, 0, 0, 0, 0, 0, -1,
+	-1, 0, 0, 0, 0, 0, 0, -1,
+	-1, 0, 0, 0, 0, 0, 0, -1,
+	0, 0, 0, 1, 1, 0, 0, 0
 };
-const int vQueenTable[] = {
-	bb, b, b, b, b, b, b, bb,
-	b, n, n, n, n, n, n, b,
-	b, n, g, g, g, g, n, b,
-	b, n, g, g, g, g, n, b,
-	n, n, g, g, g, g, n, n,
-	b, g, g, g, g, g, g, b,
-	b, n, g, n, n, g, n, b,
-	bb, bb, bb, b, b, bb, bb, bb
+const int16_t vQueenTable[] = {
+	-2, -1, -1, -1, -1, -1, -1, -2,
+	-1, 0, 0, 0, 0, 0, 0, -1,
+	-1, 0, 1, 1, 1, 1, 0, -1,
+	-1, 0, 1, 1, 1, 1, 0, -1,
+	0, 0, 1, 1, 1, 1, 0, 0,
+	-1, 1, 1, 1, 1, 1, 1, -1,
+	-1, 0, 1, 0, 0, 1, 0, -1,
+	-2, -2, -2, -1, -1, -2, -2, -2
 };
-const int vKingTableEarlyGame[] = {
-	bbb, bb, bb, bbbbb, bbbbb, bb, bb, bbb,
-	bbb, bb, bb, bbbbb, bbbbb, bb, bb, bbb,
-	bbb, bb, bb, bbbbb, bbbbb, bb, bb, bbb,
-	bbb, bb, bb, bbbbb, bbbbb, bb, bb, bbb,
-	bb, bbb, bbb, bb, bb, bbb, bbb, bb,
-	b, bb, bb, bb, bb, bb, bb, b,
-	gg, gg, n, n, n, n, gg, gg,
-	ggg, ggg, g, n, n, g, gg, ggg
+const int16_t vKingTableEarlyGame[] = {
+	-3, -2, -2, -5, -5, -2, -2, -3,
+	-3, -2, -2, -5, -5, -2, -2, -3,
+	-3, -2, -2, -5, -5, -2, -2, -3,
+	-3, -2, -2, -5, -5, -2, -2, -3,
+	-2, -3, -3, -2, -2, -3, -3, -2,
+	-1, -2, -2, -2, -2, -2, -2, -1,
+	2, 2, 0, 0, 0, 0, 2, 2,
+	3, 3, 1, 0, 0, 1, 2, 3
 };
-const int vKingTableEndGame[] = {
-	bbbbb, bbb, bbb, bbb, bbb, bbb, bbb, bbbbb,
-	b, b, n, n, n, n, b, b,
-	b, n, gg, ggg, ggg, gg, n, b,
-	b, n, ggg, ggg, ggg, ggg, n, b,
-	b, n, ggg, ggg, ggg, ggg, n, b,
-	b, n, gg, ggg, ggg, gg, n, b,
-	bbb, bb, b, n, n, b, bb, bbb,
-	b, bbb, bbb, bb, bb, bbb, bbb, b
+const int16_t vKingTableEndGame[] = {
+	-5, -3, -3, -3, -3, -3, -3, -5,
+	-1, -1, 0, 0, 0, 0, -1, -1,
+	-1, 0, 2, 3, 3, 2, 0, -1,
+	-1, 0, 3, 3, 3, 3, 0, -1,
+	-1, 0, 3, 3, 3, 3, 0, -1,
+	-1, 0, 2, 3, 3, 2, 0, -1,
+	-3, -2, -1, 0, 0, -1, -2, -3,
+	-1, -3, -3, -2, -2, -3, -3, -1
 };
 
 int state::getTotalPieceCount() {
@@ -132,11 +120,11 @@ int state::getGamePhase() {
 void state::updateEvaluation(int from, int to, int pieceType, bool isWhite, bool capture, int capturedPieceType)
 {
 	core.evaluation -= core.cellEvaluation[from] * (isWhite ? 1 : -1);
-	core.cellEvaluation[from] = n;
+	core.cellEvaluation[from] = 0;
 
 	if (capture) {
 		core.evaluation -= core.cellEvaluation[to] * (isWhite ? -1 : 1);
-		core.cellEvaluation[to] = n;
+		core.cellEvaluation[to] = 0;
 		if (capturedPieceType == constants::piece::pawn) {
 			int position = _BITBOARD_TO_POSITION(isWhite ? core.whiteKing : core.blackKing);
 			core.evaluation -= core.cellEvaluation[position] * (isWhite ? -1 : 1);
@@ -157,9 +145,9 @@ void state::updateEvaluation(int from, int to, int pieceType, bool isWhite, bool
 	}
 }
 
-int state::calculateCellEvaluation(int cell, int pieceType, bool isWhite)
+int16_t state::calculateCellEvaluation(int cell, int pieceType, bool isWhite)
 {
-	int score = n;
+	int32_t score = 0;
 
 	if (inCheck(!isWhite) && !hasAnyLegalMove(!isWhite))
 		return vCheckMate;
@@ -175,18 +163,18 @@ int state::calculateCellEvaluation(int cell, int pieceType, bool isWhite)
 				score += vPawn + (isWhite ? vPawnTableEndGame[63 - cell] : vPawnTableEndGame[cell]);
 				break;
 			}
-			score += _BITBOARD_COUNT_1((isWhite ? generatedMoves.whitePawnEvalOccupancy[cell] : generatedMoves.blackPawnEvalOccupancy[cell]) & (isWhite ? core.whitePawns : core.blackPawns)) ? vDoublePown : n;
-			score += _BITBOARD_COUNT_1((isWhite ? generatedMoves.whitePawnEvalOccupancy[cell] : generatedMoves.blackPawnEvalOccupancy[cell]) & (isWhite ? core.blackPawns : core.whitePawns)) ? n : vPassedPawn;
-			score += _BITBOARD_COUNT_1((isWhite ? generatedMoves.whitePawnEvalNoDefense[cell] : generatedMoves.blackPawnEvalNoDefense[cell]) & (isWhite ? core.blackPawns : core.whitePawns)) ? n : vPassedPawnWithNoDefense;
-			score += _BITBOARD_COUNT_1(generatedMoves.singlePawnEval[cell] & (isWhite ? core.whitePawns : core.blackPawns)) ? n : vSinglePawn;
+			score += _BITBOARD_COUNT_1((isWhite ? generatedMoves.whitePawnEvalOccupancy[cell] : generatedMoves.blackPawnEvalOccupancy[cell]) & (isWhite ? core.whitePawns : core.blackPawns)) ? vDoublePown : 0;
+			score += _BITBOARD_COUNT_1((isWhite ? generatedMoves.whitePawnEvalOccupancy[cell] : generatedMoves.blackPawnEvalOccupancy[cell]) & (isWhite ? core.blackPawns : core.whitePawns)) ? 0 : vPassedPawn;
+			score += _BITBOARD_COUNT_1((isWhite ? generatedMoves.whitePawnEvalNoDefense[cell] : generatedMoves.blackPawnEvalNoDefense[cell]) & (isWhite ? core.blackPawns : core.whitePawns)) ? 0 : vPassedPawnWithNoDefense;
+			score += _BITBOARD_COUNT_1(generatedMoves.singlePawnEval[cell] & (isWhite ? core.whitePawns : core.blackPawns)) ? 0 : vSinglePawn;
 			score += _BITBOARD_COUNT_1(getAllAttacks(cell)) * vMobilityPawn;
 			break;
 
 		case constants::piece::rook:
 			score += vRook + (isWhite ? vRookTable[63 - cell] : vRookTable[cell]);
-			score += getRookAttacks(cell, isWhite ? core.blackKing : core.whiteKing) ? vRookLaserKing : n;
-			score += getRookAttacks(cell, isWhite ? core.blackQueens : core.whiteQueens) ? vRookLaserQueen : n;
-			score += generatedMoves.rookMasks[cell] & (isWhite ? core.whitePawns : core.blackPawns) ? n : vRookOpenFile;
+			score += getRookAttacks(cell, isWhite ? core.blackKing : core.whiteKing) ? vRookLaserKing : 0;
+			score += getRookAttacks(cell, isWhite ? core.blackQueens : core.whiteQueens) ? vRookLaserQueen : 0;
+			score += generatedMoves.rookMasks[cell] & (isWhite ? core.whitePawns : core.blackPawns) ? 0 : vRookOpenFile;
 			score += _BITBOARD_COUNT_1(getAllAttacks(cell)) * vMobilityRook;
 			break;
 
@@ -197,15 +185,15 @@ int state::calculateCellEvaluation(int cell, int pieceType, bool isWhite)
 
 		case constants::piece::bishop:
 			score += vBishop + (isWhite ? vBishopTable[63 - cell] : vBishopTable[cell]);
-			score += getBishopAttacks(cell, isWhite ? core.blackKing : core.whiteKing) ? vBishopLaserKing : n;
-			score += getBishopAttacks(cell, isWhite ? core.blackQueens : core.whiteQueens) ? vBishopLaserQueen : n;
+			score += getBishopAttacks(cell, isWhite ? core.blackKing : core.whiteKing) ? vBishopLaserKing : 0;
+			score += getBishopAttacks(cell, isWhite ? core.blackQueens : core.whiteQueens) ? vBishopLaserQueen : 0;
 			score += _BITBOARD_COUNT_1(getAllAttacks(cell)) * vMobilityBishop;
 			break;
 
 		case constants::piece::queen:
 			score += vQueen + (isWhite ? vQueenTable[63 - cell] : vQueenTable[cell]);
-			score += getQueenAttacks(cell, isWhite ? core.blackKing : core.whiteKing) ? vQueenLaserKing : n;
-			score += getQueenAttacks(cell, isWhite ? core.blackQueens : core.whiteQueens) ? vQueenLaserQueen : n;
+			score += getQueenAttacks(cell, isWhite ? core.blackKing : core.whiteKing) ? vQueenLaserKing : 0;
+			score += getQueenAttacks(cell, isWhite ? core.blackQueens : core.whiteQueens) ? vQueenLaserQueen : 0;
 			score += _BITBOARD_COUNT_1(getAllAttacks(cell)) * vMobilityQueen;
 			break;
 
@@ -228,7 +216,7 @@ int state::calculateCellEvaluation(int cell, int pieceType, bool isWhite)
 
 void state::initEvaluation()
 {
-	for (int i = n; i < 64; i++) {
+	for (int i = 0; i < 64; i++) {
 		if (getBB(core.occupied, i)) {
 			core.cellEvaluation[i] = calculateCellEvaluation(i, getPieceType(i), isCellWhite(i));
 			core.evaluation += core.cellEvaluation[i] * (isCellWhite(i) ? 1 : -1);
@@ -236,7 +224,7 @@ void state::initEvaluation()
 	}
 }
 
-int state::getSearchScore()
+int16_t state::getSearchScore()
 {
 	return core.evaluation * (core.isWhiteTurn ? 1 : -1);
 }
@@ -246,8 +234,8 @@ bool state::isZugzwangLikely() {
 	return pieceCount <= 3;
 }
 
-int state::alphaBeta(float alpha, float beta, int depth) {
-    if (depth == n || isEnded) {
+int16_t state::alphaBeta(float alpha, float beta, int depth) {
+    if (depth == 0 || isEnded) {
 		return getSearchScore();
     }
 
@@ -287,9 +275,9 @@ std::mutex evalMutex;
 using namespace std::chrono_literals;
 
 void state::search(int depth) {
-	core.bestMove.from = -1;
-	core.bestMove.to = -1;
-	core.bestMove.eval = n;
+	otherData.bestMove.from = -1;
+	otherData.bestMove.to = -1;
+	otherData.bestMove.eval = 0;
 
 	std::vector<MoveEval> moveEvals;
 	std::vector<std::future<void>> futures;
@@ -304,7 +292,7 @@ void state::search(int depth) {
 			int to = _BITBOARD_GET_FIRST_1_2;
 
 			while (futures.size() >= DEFAULT_THREAD_NUMBER) {
-				for (int j = n; j < futures.size(); j++) {
+				for (int j = 0; j < futures.size(); j++) {
 					if (futures[j].wait_for(0ms) == std::future_status::ready)
 						futures.erase(std::begin(futures) + j);
 				}
@@ -337,7 +325,7 @@ void state::search(int depth) {
 	for (const auto& moveEval : moveEvals) {
 		if (moveEval.eval < bestEval) {
 			bestEval = moveEval.eval;
-			core.bestMove = moveEval;
+			otherData.bestMove = moveEval;
 		}
 	}
 }

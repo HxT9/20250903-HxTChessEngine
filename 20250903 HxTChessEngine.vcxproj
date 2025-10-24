@@ -171,6 +171,7 @@
     <ClCompile Include="state_evaluation.cpp" />
     <ClCompile Include="state_moves.cpp" />
     <ClCompile Include="state_moves_generator.cpp" />
+    <ClCompile Include="state_opening.cpp" />
     <ClCompile Include="state_utilities.cpp" />
   </ItemGroup>
   <ItemGroup>

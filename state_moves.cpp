@@ -142,7 +142,45 @@ uint64_t state::getPossibleMoves(int cell)
 	return checkPossibleMoves(cell, possibleMoves);
 }
 
-bool state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int cellEnd) {
+uint64_t state::checkPossibleMoves(int cell, uint64_t possibleMoves) {
+	checkingPosition++;
+	uint64_t ret = possibleMoves;
+	bool isWhite = isCellWhite(cell);
+	_BITBOARD_FOR_BEGIN(possibleMoves) {
+		int i = _BITBOARD_GET_FIRST_1;
+		if (!makeMove(cell, i)) continue;
+		if ((isWhite && (core.onTakeBlack & core.whiteKing)) || (!isWhite && (core.onTakeWhite & core.blackKing)))
+			resetBB(ret, i);
+		undoMove();
+		_BITBOARD_FOR_END;
+	}
+	checkingPosition--;
+	return ret;
+}
+
+bool state::hasAnyLegalMove(bool isWhite) {
+	checkingPosition++;
+	uint64_t pieces = isWhite ? core.whitePieces : core.blackPieces;
+	_BITBOARD_FOR_BEGIN(pieces) {
+		int cell = _BITBOARD_GET_FIRST_1;
+		if (getPossibleMoves(cell)) {
+			checkingPosition--;
+			return true;
+		}
+		_BITBOARD_FOR_END;
+	}
+	checkingPosition--;
+	return false;
+}
+
+void state::updatePossibleMoves()
+{
+	for (int i = 0; i < 64; i++) {
+		otherData.possibleMoves[i] = getPossibleMoves(i);
+	}
+}
+
+bool state::handleSpecialMoves(int pieceType, bool isWhite, int cellStart, int cellEnd) {
 	switch (pieceType) {
 	case constants::piece::pawn:
 		if (getBB(core.enPassant, cellEnd)) {
@@ -174,9 +212,18 @@ bool state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 			core.cellEvaluation[cellEnd] = calculateCellEvaluation(cellEnd, constants::piece::queen, isWhite);
 			core.evaluation += core.cellEvaluation[cellEnd];
 
-			pieceType = constants::piece::queen;
-
 			return false;
+		}
+		break;
+
+	case constants::piece::rook:
+		if (isWhite) {
+			if (cellStart == 0) core.whiteOOORCanCastle = false;
+			if (cellStart == 7) core.whiteOORCanCastle = false;
+		}
+		else {
+			if (cellStart == 56) core.blackOOORCanCastle = false;
+			if (cellStart == 63) core.blackOORCanCastle = false;
 		}
 		break;
 
@@ -230,37 +277,6 @@ bool state::handleSpecialMoves(int &pieceType, bool isWhite, int cellStart, int 
 	return true;
 }
 
-uint64_t state::checkPossibleMoves(int cell, uint64_t possibleMoves) {
-	checkingPosition++;
-	uint64_t ret = possibleMoves;
-	bool isWhite = isCellWhite(cell);
-	_BITBOARD_FOR_BEGIN(possibleMoves) {
-		int i = _BITBOARD_GET_FIRST_1;
-		if (!makeMove(cell, i)) continue;
-		if ((isWhite && (core.onTakeBlack & core.whiteKing)) || (!isWhite && (core.onTakeWhite & core.blackKing)))
-			resetBB(ret, i);
-		undoMove();
-		_BITBOARD_FOR_END;
-	}
-	checkingPosition--;
-	return ret;
-}
-
-bool state::hasAnyLegalMove(bool isWhite) {
-	checkingPosition++;
-	uint64_t pieces = isWhite ? core.whitePieces : core.blackPieces;
-	_BITBOARD_FOR_BEGIN(pieces) {
-		int cell = _BITBOARD_GET_FIRST_1;
-		if (getPossibleMoves(cell)) {
-			checkingPosition--;
-			return true;
-		}
-		_BITBOARD_FOR_END;
-	}
-	checkingPosition--;
-	return false;
-}
-
 bool state::makeMove(int cellStart, int cellEnd) {
 	bool isWhite, capture;
 	int pieceType, capturedPieceType;
@@ -278,7 +294,7 @@ bool state::makeMove(int cellStart, int cellEnd) {
 	postMove_updateBoard(cellStart, cellEnd, isWhite, pieceType, capture, capturedPieceType);
 
 	if (!checkingPosition && !searching)
-		updateBoard();
+		updateBoard(cellStart, cellEnd, isWhite, pieceType, capture);
 
 	return true;
 }

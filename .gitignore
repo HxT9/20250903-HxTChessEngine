@@ -371,3 +371,6 @@ FodyWeavers.xsd
 /imgui/.gitignore
 /imgui/LICENSE.txt
 /imgui.ini
+/OpeningsScraper/env
+/OpeningsScraper/openings - Copy.txt
+/OpeningsScraper/openings.txt

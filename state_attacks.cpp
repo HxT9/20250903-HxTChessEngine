@@ -332,26 +332,3 @@ void state::updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to
 	core.onTakeWhite = getAllAttacks(true);
 	core.onTakeBlack = getAllAttacks(false);
 }
-
-
-#ifdef _DEBUG
-uint64_t state::getAllAttacksOld(bool isWhite) {
-	uint64_t attacks = 0;
-	if (isWhite) {
-		_BITBOARD_FOR_BEGIN(core.whitePieces) {
-			int i = _BITBOARD_GET_FIRST_1;
-			attacks |= getAllAttacks(i);
-			_BITBOARD_FOR_END;
-		}
-	}
-	else {
-		_BITBOARD_FOR_BEGIN(core.blackPieces) {
-			int i = _BITBOARD_GET_FIRST_1;
-			attacks |= getAllAttacks(i);
-			_BITBOARD_FOR_END;
-		}
-	}
-
-	return attacks;
-}
-#endif
