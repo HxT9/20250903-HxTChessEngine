@@ -291,33 +291,45 @@ void state::search(int depth) {
 		_BITBOARD_FOR_BEGIN_2(moves) {
 			int to = _BITBOARD_GET_FIRST_1_2;
 
-			while (futures.size() >= DEFAULT_THREAD_NUMBER) {
-				for (int j = 0; j < futures.size(); j++) {
-					if (futures[j].wait_for(0ms) == std::future_status::ready)
-						futures.erase(std::begin(futures) + j);
+			if (DEFAULT_THREAD_NUMBER > 1) {
+
+				while (futures.size() >= DEFAULT_THREAD_NUMBER) {
+					for (int j = 0; j < futures.size(); j++) {
+						if (futures[j].wait_for(0ms) == std::future_status::ready)
+							futures.erase(std::begin(futures) + j);
+					}
+				}
+
+				//Make a new state per thread
+				state* s_copy = new state(*this);
+				futures.push_back(std::async(std::launch::async, [s_copy, depth, from, to, &moveEvals]() {
+					if (s_copy->makeMove(from, to)) {
+						int eval = s_copy->alphaBeta(-1e9f, 1e9f, depth - 1);
+						// Store result in a thread-safe way
+						std::lock_guard<std::mutex> lock(evalMutex);
+						moveEvals.push_back({ from, to, eval });
+					}
+					delete s_copy;
+					}));
+			}
+			else {
+				if (makeMove(from, to)) {
+					int eval = alphaBeta(-1e9f, 1e9f, depth - 1);
+					moveEvals.push_back({ from, to, eval });
+					undoMove();
 				}
 			}
-
-			//Make a new state per thread
-			state* s_copy = new state(*this);
-			futures.push_back(std::async(std::launch::async, [s_copy, depth, from, to, &moveEvals]() {
-				if (s_copy->makeMove(from, to)) {
-					int eval = s_copy->alphaBeta(-1e9f, 1e9f, depth - 1);
-					// Store result in a thread-safe way
-					std::lock_guard<std::mutex> lock(evalMutex);
-					moveEvals.push_back({ from, to, eval });
-				}
-				delete s_copy;
-				}));
 
 		_BITBOARD_FOR_END_2;
 		}
 	_BITBOARD_FOR_END;
 	}
 
-	// Wait for all remaining threads
-	for (auto& f : futures) {
-		f.wait();
+	if (DEFAULT_THREAD_NUMBER > 1) {
+		// Wait for all remaining threads
+		for (auto& f : futures) {
+			f.wait();
+		}
 	}
 
 	// Find best move - select the move with lowest evaluation (least advantage for opponent)
