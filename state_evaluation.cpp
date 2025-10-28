@@ -1,8 +1,7 @@
 #include "state.h"
 #include "constants.h"
-#include <future>
 #include <chrono>
-#include <mutex>
+#include <algorithm>
 
 const int16_t vPawn = 100, vRook = 400, vKnight = 320, vBishop = 330, vQueen = 900, vKing = 0;
 const int16_t vDoublePown = -20, vPassedPawn = 20, vPassedPawnWithNoDefense = 50, vSinglePawn = -30;
@@ -270,69 +269,55 @@ int16_t state::alphaBeta(float alpha, float beta, int depth) {
 	return alpha;
 }
 
-std::mutex evalMutex;
-
 using namespace std::chrono_literals;
+
+struct MovePriority {
+	int from, to;
+	int priority;
+};
 
 void state::search(int depth) {
 	otherData.bestMove.from = -1;
 	otherData.bestMove.to = -1;
 	otherData.bestMove.eval = 0;
 
+	std::vector<MovePriority> movePriority;
 	std::vector<MoveEval> moveEvals;
-	std::vector<std::future<void>> futures;
 
 	//Get all moves
 	uint64_t pieces = core.isWhiteTurn ? core.whitePieces : core.blackPieces;
 	_BITBOARD_FOR_BEGIN(pieces) {
 		int from = _BITBOARD_GET_FIRST_1;
+		int attackerType = getPieceType(from);
 		uint64_t moves = getPossibleMoves(from);
-
 		_BITBOARD_FOR_BEGIN_2(moves) {
 			int to = _BITBOARD_GET_FIRST_1_2;
-
-			if (DEFAULT_THREAD_NUMBER > 1) {
-
-				while (futures.size() >= DEFAULT_THREAD_NUMBER) {
-					for (int j = 0; j < futures.size(); j++) {
-						if (futures[j].wait_for(0ms) == std::future_status::ready)
-							futures.erase(std::begin(futures) + j);
-					}
-				}
-
-				//Make a new state per thread
-				state* s_copy = new state(*this);
-				futures.push_back(std::async(std::launch::async, [s_copy, depth, from, to, &moveEvals]() {
-					if (s_copy->makeMove(from, to)) {
-						int eval = s_copy->alphaBeta(-1e9f, 1e9f, depth - 1);
-						// Store result in a thread-safe way
-						std::lock_guard<std::mutex> lock(evalMutex);
-						moveEvals.push_back({ from, to, eval });
-					}
-					delete s_copy;
-					}));
+			int attackedType = getPieceType(to);
+			MovePriority mp = { from, to, attackedType };
+			if (core.isWhiteTurn) {
+				if (getBB(core.blackPawnsAttacks | core.blackKnightsAttacks | core.blackBishopsAttacks | core.blackRooksAttacks | core.blackQueensAttacks | core.blackKingAttacks, to))
+					mp.priority -= attackerType;
 			}
 			else {
-				if (makeMove(from, to)) {
-					int eval = alphaBeta(-1e9f, 1e9f, depth - 1);
-					moveEvals.push_back({ from, to, eval });
-					undoMove();
-				}
+				if (getBB(core.whitePawnsAttacks | core.whiteKnightsAttacks | core.whiteBishopsAttacks | core.whiteRooksAttacks | core.whiteQueensAttacks | core.whiteKingAttacks, to))
+					mp.priority -= attackerType;
 			}
-
-		_BITBOARD_FOR_END_2;
+			movePriority.push_back(mp);
+			_BITBOARD_FOR_END_2;
 		}
-	_BITBOARD_FOR_END;
+		_BITBOARD_FOR_END;
+	}
+	std::sort(movePriority.begin(), movePriority.end(), [](const MovePriority &a, const MovePriority &b) { return a.priority > b.priority; });
+
+	for (int i = 0; i < movePriority.size(); i++) {
+		if (makeMove(movePriority[i].from, movePriority[i].to)) {
+			int eval = alphaBeta(-1e9f, 1e9f, depth - 1);
+			moveEvals.push_back({ movePriority[i].from, movePriority[i].to, eval });
+			undoMove();
+		}
 	}
 
-	if (DEFAULT_THREAD_NUMBER > 1) {
-		// Wait for all remaining threads
-		for (auto& f : futures) {
-			f.wait();
-		}
-	}
-
-	// Find best move - select the move with lowest evaluation (least advantage for opponent)
+	// Find best move - select the move with lowest evaluation
 	int bestEval = 1e9f;
 	for (const auto& moveEval : moveEvals) {
 		if (moveEval.eval < bestEval) {
@@ -343,6 +328,15 @@ void state::search(int depth) {
 }
 
 void state::searchPosition() {
+	if (ENABLE_BOOK && otherData.cur_opening) {
+		if (pgn.size())
+			otherData.cur_opening = otherData.cur_opening->getNext(pgn[pgn.size() - 1]);
+		if (!(otherData.cur_opening && otherData.cur_opening->getNext("") && getMove(otherData.cur_opening->getNext("")->move, otherData.bestMove.from, otherData.bestMove.to, core.isWhiteTurn)))
+			otherData.cur_opening = nullptr;
+		else
+			return;
+	}
+
 	searching = true;
 	auto t1 = std::chrono::high_resolution_clock::now();
 	search(MAX_SEARCH_DEPTH);

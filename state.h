@@ -7,10 +7,11 @@
 #include <string>
 
 //Options
-constexpr int MAX_SEARCH_DEPTH = 6;
+constexpr int MAX_SEARCH_DEPTH = 5;
 constexpr int  DEFAULT_THREAD_NUMBER = 20;
 constexpr bool ENABLE_BOT = true;
 constexpr bool ENABLE_HINTS = true;
+constexpr bool ENABLE_BOOK = false;
 
 //Bitboard utilities
 #define getBB(data, i) data & (1ULL << i)
@@ -94,7 +95,7 @@ struct MoveEvalPerPiece {
 	size_t moveEvalCount;
 };
 
-struct coreData {
+struct _coreData { //Priority data that gets recalculated also for every computed move
 	uint64_t whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKing;
 	uint64_t blackPawns, blackKnights, blackBishops, blackRooks, blackQueens, blackKing;
 	uint64_t whitePieces, blackPieces, occupied, empty;
@@ -117,7 +118,7 @@ struct coreData {
 	uint32_t cellEvaluation[64];
 };
 
-struct secondaryData {
+struct _otherData { //Data that may be recalculated only every user move
 	MoveEval bestMove = MoveEval{ -1, -1, 0 };
 	MoveEvalPerPiece moveEvals[64];
 
@@ -126,18 +127,22 @@ struct secondaryData {
 	openingTree* cur_opening;
 };
 
+struct _history {
+	_coreData coreDataHistory[1024];
+	_otherData otherDataHistory[1024];
+	int index;
+};
+
 class state {
 public:
-	coreData core;
-	secondaryData otherData;
+	_coreData core;
+	_otherData otherData;
 	std::vector<std::string> pgn;
 	openingTree openingBook;
 
 	bool isEnded = false;
 
-	coreData coreDataHistory[1024];
-	secondaryData otherDataHistory[1024];
-	int historyIndex;
+	_history history;
 
 	//other
 	int checkingPosition;

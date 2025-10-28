@@ -3,19 +3,19 @@
 #include <string>
 
 void state::savePosition() {
-	memcpy(&(coreDataHistory[historyIndex]), &core, sizeof(coreData));
-	if (isManual) memcpy(&(otherDataHistory[historyIndex]), &otherData, sizeof(secondaryData));
-	historyIndex ++;
+	memcpy(&(history.coreDataHistory[history.index]), &core, sizeof(_coreData));
+	if (isManual) memcpy(&(history.otherDataHistory[history.index]), &otherData, sizeof(_otherData));
+	history.index++;
 }
 
 void state::undoMove() {
-	if (historyIndex == 0) return;
-	memcpy(&core, &(coreDataHistory[historyIndex - 1]), sizeof(coreData));
+	if (history.index == 0) return;
+	memcpy(&core, &(history.coreDataHistory[history.index - 1]), sizeof(_coreData));
 	if (isManual) {
-		memcpy(&otherData, &(otherDataHistory[historyIndex - 1]), sizeof(secondaryData));
+		memcpy(&otherData, &(history.otherDataHistory[history.index - 1]), sizeof(_otherData));
 		pgn.erase(pgn.end() - 1);
 	}
-	historyIndex -= 1;
+	history.index--;
 
 	isEnded = false;
 }

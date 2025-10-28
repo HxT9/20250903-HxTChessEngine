@@ -374,3 +374,5 @@ FodyWeavers.xsd
 /OpeningsScraper/env
 /OpeningsScraper/openings - Copy.txt
 /OpeningsScraper/openings.txt
+/OpeningsScraper/openings_old.txt
+/OpeningsScraper/OpeningsScraper.pyproj

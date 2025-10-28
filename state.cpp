@@ -50,7 +50,7 @@ state::state() {
 	core.lastMove[1] = -1;
 
 	checkingPosition = 0;
-	historyIndex = 0;
+	history.index = 0;
 
 	recalculateQueue = 0;
 
@@ -74,11 +74,10 @@ void state::init()
 
 	std::cout << "[+] Load Openings" << std::endl;
 	openingBook.readFromFile("openings.txt");
+	otherData.cur_opening = &openingBook;
 	std::cout << "[+] Done" << std::endl;
 
-	otherData.cur_opening = &openingBook;
-	if (!(openingBook.getNext("") && getMove(openingBook.getNext("")->move, otherData.bestMove.from, otherData.bestMove.to, core.isWhiteTurn)))
-		searchPosition();
+	searchPosition();
 }
 
 bool state::preMove_updateBoard(int cellStart, int cellEnd, bool& isWhite, int& pieceType, bool& capture, int& capturedPieceType)
@@ -126,14 +125,7 @@ void state::updateBoard(int cellStart, int cellEnd, bool isWhite, int pieceType,
 	char* _pgn = getPgn(cellStart, cellEnd, isWhite, pieceType, capture);
 	pgn.push_back(std::string(_pgn));
 	
-	if (otherData.cur_opening) {
-		otherData.cur_opening = otherData.cur_opening->getNext(_pgn);
-		if (!(otherData.cur_opening && otherData.cur_opening->getNext("") && getMove(otherData.cur_opening->getNext("")->move, otherData.bestMove.from, otherData.bestMove.to, core.isWhiteTurn)))
-			searchPosition();
-	}
-	else {
-		searchPosition();
-	}
+	searchPosition();
 
 	printf("%i\n", core.evaluation);
 
