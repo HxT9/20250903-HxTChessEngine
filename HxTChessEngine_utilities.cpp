@@ -1,26 +1,29 @@
-﻿#include "state.h"
+﻿#include "HxTChessEngine.h"
 #include "constants.h"
 #include <string>
 
-void state::savePosition() {
-	memcpy(&(history.coreDataHistory[history.index]), &core, sizeof(_coreData));
-	if (isManual) memcpy(&(history.otherDataHistory[history.index]), &otherData, sizeof(_otherData));
+void HxTChessEngine::savePosition() {
+	memcpy(&(history.coreDataHistory[history.index]), &core, sizeof(CoreData));
+	if (isManual) memcpy(&(history.otherDataHistory[history.index]), &otherData, sizeof(OtherData));
 	history.index++;
 }
 
-void state::undoMove() {
+void HxTChessEngine::undoMove() {
 	if (history.index == 0) return;
-	memcpy(&core, &(history.coreDataHistory[history.index - 1]), sizeof(_coreData));
+	memcpy(&core, &(history.coreDataHistory[history.index - 1]), sizeof(CoreData));
 	if (isManual) {
-		memcpy(&otherData, &(history.otherDataHistory[history.index - 1]), sizeof(_otherData));
+		memcpy(&otherData, &(history.otherDataHistory[history.index - 1]), sizeof(OtherData));
 		pgn.erase(pgn.end() - 1);
 	}
-	history.index--;
 
 	isEnded = false;
+
+	zobrist.hash = history.zobrist[history.index - 1];
+
+	history.index--;
 }
 
-void state::initPieces()
+void HxTChessEngine::initPieces()
 {
 	setBB(core.whiteRooks, 0);
 	setBB(core.whiteKnights, 1);
@@ -55,22 +58,17 @@ void state::initPieces()
 	setBB(core.blackPawns, 50);
 	setBB(core.blackPawns, 49);
 	setBB(core.blackPawns, 48);
-
-	core.whitePieces = core.whitePawns | core.whiteRooks | core.whiteKnights | core.whiteBishops | core.whiteQueens | core.whiteKing;
-	core.blackPieces = core.blackPawns | core.blackRooks | core.blackKnights | core.blackBishops | core.blackQueens | core.blackKing;
-	core.occupied = core.whitePieces | core.blackPieces;
-	core.empty = ~core.occupied;
 }
 
-int state::getPiece(int cell) {
+int HxTChessEngine::getPiece(int cell) {
 	if (isCellWhite(cell))
 		return constants::team::white | getPieceType(cell);
 	else
 		return constants::team::black | getPieceType(cell);
 }
 
-int state::getPieceType(int cell) {
-	if (isCellEmpty(cell)) return constants::piece::empty;
+int HxTChessEngine::getPieceType(int cell) {
+	if (isCellEmpty(cell)) return 0;
 
 	if ((core.whitePawns | core.blackPawns) & (1ULL << cell)) return constants::piece::pawn;
 	if ((core.whiteRooks | core.blackRooks)  & (1ULL << cell)) return constants::piece::rook;
@@ -80,7 +78,7 @@ int state::getPieceType(int cell) {
 	if ((core.whiteKing | core.blackKing) & (1ULL << cell)) return constants::piece::king;
 }
 
-void state::setPiece(int cell, int piece) {
+void HxTChessEngine::setPiece(int cell, int piece) {
 	clearPiece(cell);
 	if (piece & constants::team::white) {
 		switch (piece & 0b00111111) {
@@ -112,8 +110,6 @@ void state::setPiece(int cell, int piece) {
 			core.whiteKing |= (1ULL << cell);
 			break;
 		}
-		
-		setBB(core.whitePieces, cell);
 	}
 	else {
 		switch (piece & 0b00111111) {
@@ -147,11 +143,10 @@ void state::setPiece(int cell, int piece) {
 			break;
 
 		}
-		setBB(core.blackPieces, cell);
 	}
 }
 
-void state::clearPiece(int cell) {
+void HxTChessEngine::clearPiece(int cell) {
 	if (isCellOccupied(cell)) {
 		if (isCellWhite(cell)) {
 			switch (getPieceType(cell)) {
@@ -185,7 +180,6 @@ void state::clearPiece(int cell) {
 				break;
 
 			}
-			resetBB(core.whitePieces, cell);
 		}
 		else {
 			switch (getPieceType(cell)) {
@@ -219,12 +213,11 @@ void state::clearPiece(int cell) {
 				break;
 
 			}
-			resetBB(core.blackPieces, cell);
 		}
 	}
 }
 
-uint64_t state::getPieces(int pieceType, int team) {
+uint64_t HxTChessEngine::getPieces(int pieceType, int team) {
 	if (team == constants::team::white)
 		switch (pieceType) {
 		case constants::piece::pawn:
@@ -257,7 +250,7 @@ uint64_t state::getPieces(int pieceType, int team) {
 		}
 }
 
-void state::updatePieceCount() {
+void HxTChessEngine::updatePieceCount() {
 	core.whitePawnCount = _BITBOARD_COUNT_1(core.whitePawns);
 	core.blackPawnCount = _BITBOARD_COUNT_1(core.blackPawns);
 	core.whiteRookCount = _BITBOARD_COUNT_1(core.whiteRooks);
@@ -270,7 +263,7 @@ void state::updatePieceCount() {
 	core.blackQueenCount = _BITBOARD_COUNT_1(core.blackQueens);
 }
 
-const char* state::cellToNotation(int cell)
+const char* HxTChessEngine::cellToNotation(int cell)
 {
 	static const char* notation[64] = {
 		"a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
@@ -285,7 +278,7 @@ const char* state::cellToNotation(int cell)
 	return notation[cell];
 }
 
-uint64_t state::getTypeBB(int pieceType, bool isWhite) {
+uint64_t HxTChessEngine::getTypeBB(int pieceType, bool isWhite) {
 	switch (pieceType) {
 	case constants::piece::pawn:
 		return isWhite ? core.whitePawns : core.blackPawns;
@@ -304,7 +297,7 @@ uint64_t state::getTypeBB(int pieceType, bool isWhite) {
 	}
 }
 
-char* state::getPgn(int cellStart, int cellEnd, bool isWhite, int pieceType, bool capture) {
+char* HxTChessEngine::getPgn(int cellStart, int cellEnd, bool isWhite, int pieceType, bool capture) {
 	std::string pgn = "";
 	bool isCastle = false;
 
@@ -384,7 +377,7 @@ char* state::getPgn(int cellStart, int cellEnd, bool isWhite, int pieceType, boo
 	return _strdup(pgn.c_str());
 }
 
-bool state::getMove(std::string pgnMove, int& cellStart, int& cellEnd, bool isWhite)
+bool HxTChessEngine::getMove(std::string pgnMove, int& cellStart, int& cellEnd, bool isWhite)
 {
 	if (pgnMove == "O-O" || pgnMove == "O-O-O") {
 		//castle

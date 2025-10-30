@@ -1,4 +1,4 @@
-#include "state.h"
+#include "HxTChessEngine.h"
 #include "localGui.h"
 #include <iostream>
 #include <string>
@@ -8,7 +8,7 @@ int localGui() {
 }
 
 int uciLoop() {
-    state s;
+    HxTChessEngine s;
 
     std::string line;
     while (std::getline(std::cin, line)) {

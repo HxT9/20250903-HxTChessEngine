@@ -1,4 +1,4 @@
-#include "state.h"
+#include "HxTChessEngine.h"
 #include "constants.h"
 
 #include "imgui/imgui.h"
@@ -17,7 +17,7 @@ int w = 600;
 #endif
 bool lb_rotated = false;
 
-state* s;
+HxTChessEngine* s;
 ID3D11ShaderResourceView* pieceTextures[13];
 int selectedCell = -1;
 
@@ -26,7 +26,7 @@ uint64_t possibleMoves;
 int initDraw();
 
 int localGuiDraw() {
-    s = new state();
+    s = new HxTChessEngine();
     s->init();
 
     initDraw();
@@ -49,22 +49,22 @@ void drawChessBoard() {
             ImTextureID tex = 0;
             switch (s->getPieceType(i)) {
             case constants::piece::pawn:
-                tex = getBB(s->core.whitePieces, i) ? (ImTextureID)pieceTextures[0] : (ImTextureID)pieceTextures[6];
+                tex = getBB(s->getWhitePieces(), i) ? (ImTextureID)pieceTextures[0] : (ImTextureID)pieceTextures[6];
                 break;
             case constants::piece::rook:
-                tex = getBB(s->core.whitePieces, i) ? (ImTextureID)pieceTextures[1] : (ImTextureID)pieceTextures[7];
+                tex = getBB(s->getWhitePieces(), i) ? (ImTextureID)pieceTextures[1] : (ImTextureID)pieceTextures[7];
                 break;
             case constants::piece::knight:
-                tex = getBB(s->core.whitePieces, i) ? (ImTextureID)pieceTextures[2] : (ImTextureID)pieceTextures[8];
+                tex = getBB(s->getWhitePieces(), i) ? (ImTextureID)pieceTextures[2] : (ImTextureID)pieceTextures[8];
                 break;
             case constants::piece::bishop:
-                tex = getBB(s->core.whitePieces, i) ? (ImTextureID)pieceTextures[3] : (ImTextureID)pieceTextures[9];
+                tex = getBB(s->getWhitePieces(), i) ? (ImTextureID)pieceTextures[3] : (ImTextureID)pieceTextures[9];
                 break;
             case constants::piece::queen:
-                tex = getBB(s->core.whitePieces, i) ? (ImTextureID)pieceTextures[4] : (ImTextureID)pieceTextures[10];
+                tex = getBB(s->getWhitePieces(), i) ? (ImTextureID)pieceTextures[4] : (ImTextureID)pieceTextures[10];
                 break;
             case constants::piece::king:
-                tex = getBB(s->core.whitePieces, i) ? (ImTextureID)pieceTextures[5] : (ImTextureID)pieceTextures[11];
+                tex = getBB(s->getWhitePieces(), i) ? (ImTextureID)pieceTextures[5] : (ImTextureID)pieceTextures[11];
                 break;
             }
             if (tex)
@@ -102,7 +102,7 @@ void drawChessBoard() {
             sprintf_s(id, "cell_%d", i);
             ImGui::SetCursorScreenPos(topLeft);
             if (ImGui::InvisibleButton(id, ImVec2{ cellSize, cellSize })) {
-                if (selectedCell >= 0 && getBB(s->core.occupied, selectedCell) && getBB(possibleMoves, i)) {
+                if (selectedCell >= 0 && getBB(s->getOccupiedCells(), selectedCell) && getBB(possibleMoves, i)) {
                     s->makeMove(selectedCell, i);
                     selectedCell = -1;
                     possibleMoves = 0;

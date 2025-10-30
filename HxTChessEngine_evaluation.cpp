@@ -1,4 +1,4 @@
-#include "state.h"
+#include "HxTChessEngine.h"
 #include "constants.h"
 #include <chrono>
 #include <algorithm>
@@ -94,7 +94,7 @@ const int16_t vKingTableEndGame[] = {
 	-1, -3, -3, -2, -2, -3, -3, -1
 };
 
-int state::getTotalPieceCount() {
+int HxTChessEngine::getTotalPieceCount() {
 	return core.whitePawnCount * vPawn +
 		core.blackPawnCount * vPawn +
 		core.whiteRookCount * vRook +
@@ -107,7 +107,7 @@ int state::getTotalPieceCount() {
 		core.blackQueenCount * vQueen;
 }
 
-int state::getGamePhase() {
+int HxTChessEngine::getGamePhase() {
 	int gamePhase = getTotalPieceCount();
 	if (gamePhase >= 3000)
 		gamePhase = 0b1;
@@ -116,12 +116,12 @@ int state::getGamePhase() {
 	return gamePhase;
 }
 
-void state::updateEvaluation(int from, int to, int pieceType, bool isWhite, bool capture, int capturedPieceType)
+void HxTChessEngine::updateEvaluation(int from, int to, int pieceType, bool isWhite, int capturedPieceType)
 {
 	core.evaluation -= core.cellEvaluation[from] * (isWhite ? 1 : -1);
 	core.cellEvaluation[from] = 0;
 
-	if (capture) {
+	if (capturedPieceType) {
 		core.evaluation -= core.cellEvaluation[to] * (isWhite ? -1 : 1);
 		core.cellEvaluation[to] = 0;
 		if (capturedPieceType == constants::piece::pawn) {
@@ -144,7 +144,7 @@ void state::updateEvaluation(int from, int to, int pieceType, bool isWhite, bool
 	}
 }
 
-int16_t state::calculateCellEvaluation(int cell, int pieceType, bool isWhite)
+int HxTChessEngine::calculateCellEvaluation(int cell, int pieceType, bool isWhite)
 {
 	int32_t score = 0;
 
@@ -205,7 +205,7 @@ int16_t state::calculateCellEvaluation(int cell, int pieceType, bool isWhite)
 				score += vKing + ((isWhite ? vKingTableEndGame[63 - cell] : vKingTableEndGame[cell]));
 				break;
 			}
-			score += (isWhite ? core.whiteKingCastle : core.blackKingCastle) * vCastle;
+			score += (isWhite ? (core.whiteKingOOCastle || core.whiteKingOOOCastle) : (core.blackKingOOCastle || core.blackKingOOOCastle)) * vCastle;
 			score += _BITBOARD_COUNT_1((isWhite ? generatedMoves.whiteKingPawnShield[cell] : generatedMoves.blackKingPawnShield[cell]) & (isWhite ? core.whitePawns : core.blackPawns)) * vKingShield;
 			break;
 	}
@@ -213,27 +213,32 @@ int16_t state::calculateCellEvaluation(int cell, int pieceType, bool isWhite)
 	return score;
 }
 
-void state::initEvaluation()
+void HxTChessEngine::initEvaluation()
 {
 	for (int i = 0; i < 64; i++) {
-		if (getBB(core.occupied, i)) {
+		if (isCellOccupied(i)) {
 			core.cellEvaluation[i] = calculateCellEvaluation(i, getPieceType(i), isCellWhite(i));
 			core.evaluation += core.cellEvaluation[i] * (isCellWhite(i) ? 1 : -1);
 		}
 	}
 }
 
-int16_t state::getSearchScore()
+int HxTChessEngine::getSearchScore()
 {
 	return core.evaluation * (core.isWhiteTurn ? 1 : -1);
 }
 
-bool state::isZugzwangLikely() {
-	int pieceCount = core.isWhiteTurn ? _BITBOARD_COUNT_1(core.whitePieces) : _BITBOARD_COUNT_1(core.blackPieces);
+bool HxTChessEngine::isZugzwangLikely() {
+	int pieceCount = core.isWhiteTurn ? _BITBOARD_COUNT_1(whitePieces) : _BITBOARD_COUNT_1(blackPieces);
 	return pieceCount <= 3;
 }
 
-int16_t state::alphaBeta(float alpha, float beta, int depth) {
+struct MovePriority {
+	int from, to;
+	int priority;
+};
+
+int HxTChessEngine::alphaBeta(int alpha, int beta, int depth) {
     if (depth == 0 || isEnded) {
 		return getSearchScore();
     }
@@ -241,29 +246,52 @@ int16_t state::alphaBeta(float alpha, float beta, int depth) {
 	// Null Move Pruning
 	if (depth >= 3 && !inCheck(core.isWhiteTurn) && !isZugzwangLikely()) {
 		core.isWhiteTurn = !core.isWhiteTurn;
+		zobrist.hash ^= zobrist.isWhiteTurn;
 		int nullEval = -alphaBeta(-beta, -beta + 1, depth - 1 - 2);
 		core.isWhiteTurn = !core.isWhiteTurn;
+		zobrist.hash ^= zobrist.isWhiteTurn;
+
+		if (nullEval >= beta)
+			return beta;
 	}
 
-	uint64_t pieces = core.isWhiteTurn ? core.whitePieces : core.blackPieces;
+	std::vector<MovePriority> movePriority;
+
+	//Get all moves
+	uint64_t pieces = core.isWhiteTurn ? whitePieces : blackPieces;
 	_BITBOARD_FOR_BEGIN(pieces) {
 		int from = _BITBOARD_GET_FIRST_1;
+		int attackerType = getPieceType(from);
 		uint64_t moves = getPossibleMoves(from);
 		_BITBOARD_FOR_BEGIN_2(moves) {
 			int to = _BITBOARD_GET_FIRST_1_2;
+			int attackedType = getPieceType(to);
+			MovePriority mp = { from, to, attackedType };
+			if (core.isWhiteTurn) {
+				if (getBB(core.blackPawnsAttacks | core.blackKnightsAttacks | core.blackBishopsAttacks | core.blackRooksAttacks | core.blackQueensAttacks | core.blackKingAttacks, to))
+					mp.priority -= attackerType;
+			}
+			else {
+				if (getBB(core.whitePawnsAttacks | core.whiteKnightsAttacks | core.whiteBishopsAttacks | core.whiteRooksAttacks | core.whiteQueensAttacks | core.whiteKingAttacks, to))
+					mp.priority -= attackerType;
+			}
 
-			if (!makeMove(from, to)) continue;
-			int score = -alphaBeta(-beta, -alpha, depth - 1);
-			undoMove();
-
-			if (score >= beta)
-				return beta;
-			if (score > alpha)
-				alpha = score;
-			
+			movePriority.push_back(mp);
 			_BITBOARD_FOR_END_2;
 		}
 		_BITBOARD_FOR_END;
+	}
+	std::sort(movePriority.begin(), movePriority.end(), [](const MovePriority& a, const MovePriority& b) { return a.priority > b.priority; });
+
+	for (int i = 0; i < movePriority.size(); i++) {
+		if (!makeMove(movePriority[i].from, movePriority[i].to)) continue;
+		int score = -alphaBeta(-beta, -alpha, depth - 1);
+		undoMove();
+
+		if (score >= beta)
+			return beta;
+		if (score > alpha)
+			alpha = score;
 	}
 
 	return alpha;
@@ -271,12 +299,7 @@ int16_t state::alphaBeta(float alpha, float beta, int depth) {
 
 using namespace std::chrono_literals;
 
-struct MovePriority {
-	int from, to;
-	int priority;
-};
-
-void state::search(int depth) {
+void HxTChessEngine::search(int depth) {
 	otherData.bestMove.from = -1;
 	otherData.bestMove.to = -1;
 	otherData.bestMove.eval = 0;
@@ -285,7 +308,7 @@ void state::search(int depth) {
 	std::vector<MoveEval> moveEvals;
 
 	//Get all moves
-	uint64_t pieces = core.isWhiteTurn ? core.whitePieces : core.blackPieces;
+	uint64_t pieces = core.isWhiteTurn ? whitePieces : blackPieces;
 	_BITBOARD_FOR_BEGIN(pieces) {
 		int from = _BITBOARD_GET_FIRST_1;
 		int attackerType = getPieceType(from);
@@ -311,7 +334,7 @@ void state::search(int depth) {
 
 	for (int i = 0; i < movePriority.size(); i++) {
 		if (makeMove(movePriority[i].from, movePriority[i].to)) {
-			int eval = alphaBeta(-1e9f, 1e9f, depth - 1);
+			int eval = alphaBeta(-1e9, 1e9, depth - 1);
 			moveEvals.push_back({ movePriority[i].from, movePriority[i].to, eval });
 			undoMove();
 		}
@@ -327,7 +350,7 @@ void state::search(int depth) {
 	}
 }
 
-void state::searchPosition() {
+void HxTChessEngine::searchPosition() {
 	if (ENABLE_BOOK && otherData.cur_opening) {
 		if (pgn.size())
 			otherData.cur_opening = otherData.cur_opening->getNext(pgn[pgn.size() - 1]);
@@ -343,4 +366,6 @@ void state::searchPosition() {
 	auto t2 = std::chrono::high_resolution_clock::now();
 	printf("Time: %llu\n", std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
 	searching = false;
+
+	tTable.incrementAge();
 }

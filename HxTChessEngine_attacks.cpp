@@ -1,7 +1,7 @@
-#include "state.h"
+#include "HxTChessEngine.h"
 #include "constants.h"
 
-uint64_t state::getAllAttacks(bool isWhite) {
+uint64_t HxTChessEngine::getAllAttacks(bool isWhite) {
 	if (isWhite) {
 		return core.whitePawnsAttacks | core.whiteKnightsAttacks | core.whiteBishopsAttacks |
 			   core.whiteRooksAttacks | core.whiteQueensAttacks | core.whiteKingAttacks;
@@ -11,7 +11,7 @@ uint64_t state::getAllAttacks(bool isWhite) {
 	}
 }
 
-uint64_t state::getAllAttacks(int cell) {
+uint64_t HxTChessEngine::getAllAttacks(int cell) {
 	switch (getPieceType(cell)) {
 	case constants::piece::pawn:
 		return getPawnAttacks(cell);
@@ -36,41 +36,41 @@ uint64_t state::getAllAttacks(int cell) {
 	return 0;
 }
 
-uint64_t state::getKingAttacks(int cell) {
+uint64_t HxTChessEngine::getKingAttacks(int cell) {
 	return generatedMoves.kingMoves[cell];
 }
 
-uint64_t state::getKnightAttacks(int cell) {
+uint64_t HxTChessEngine::getKnightAttacks(int cell) {
 	return generatedMoves.knightMoves[cell];
 }
 
-uint64_t state::getRookAttacks(int cell, uint64_t occupiedMask) {
-	uint64_t occupancy = (occupiedMask ? occupiedMask : core.occupied) & generatedMoves.rookMasks[cell];
+uint64_t HxTChessEngine::getRookAttacks(int cell, uint64_t occupiedMask) {
+	uint64_t occupancy = (occupiedMask ? occupiedMask : occupiedCells) & generatedMoves.rookMasks[cell];
 	int index = (occupancy * generatedMoves.rookMagics[cell].magic) >> generatedMoves.rookMagics[cell].shift;
 	return generatedMoves.rookMoves[cell][index];
 }
 
-uint64_t state::getBishopAttacks(int cell, uint64_t occupiedMask) {
-	uint64_t occupancy = (occupiedMask ? occupiedMask : core.occupied) & generatedMoves.bishopMasks[cell];
+uint64_t HxTChessEngine::getBishopAttacks(int cell, uint64_t occupiedMask) {
+	uint64_t occupancy = (occupiedMask ? occupiedMask : occupiedCells) & generatedMoves.bishopMasks[cell];
 	int index = (occupancy * generatedMoves.bishopMagics[cell].magic) >> generatedMoves.bishopMagics[cell].shift;
 	return generatedMoves.bishopMoves[cell][index];
 }
 
-uint64_t state::getQueenAttacks(int cell, uint64_t occupiedMask) {
+uint64_t HxTChessEngine::getQueenAttacks(int cell, uint64_t occupiedMask) {
 	return getRookAttacks(cell, occupiedMask) | getBishopAttacks(cell, occupiedMask);
 }
 
-uint64_t state::getPawnAttacks(int cell) {
+uint64_t HxTChessEngine::getPawnAttacks(int cell) {
 	return isCellWhite(cell) ? generatedMoves.whitePawnCaptures[cell] : generatedMoves.blackPawnCaptures[cell];
 }
 
-uint64_t state::getAttackedFrom(int cell)
+uint64_t HxTChessEngine::getAttackedFrom(int cell)
 {
 	return 0;
 }
 
-void state::initAttacks() {
-	_BITBOARD_FOR_BEGIN(core.occupied) {
+void HxTChessEngine::initAttacks() {
+	_BITBOARD_FOR_BEGIN(occupiedCells) {
 		int i = _BITBOARD_GET_FIRST_1;
 		setAttacks(i, isCellWhite(i));
 		_BITBOARD_FOR_END;
@@ -80,7 +80,7 @@ void state::initAttacks() {
 	core.onTakeBlack = core.blackPawnsAttacks | core.blackRooksAttacks | core.blackKnightsAttacks | core.blackBishopsAttacks | core.blackQueensAttacks | core.blackKingAttacks;
 }
 
-void state::setAttacks(int attackerCell, bool isWhite)
+void HxTChessEngine::setAttacks(int attackerCell, bool isWhite)
 {
 	uint64_t newAttacks = getAllAttacks(attackerCell);
 
@@ -139,7 +139,7 @@ void state::setAttacks(int attackerCell, bool isWhite)
 /*
 * Resets a piece's attacks from the precomputed tables and returns the cells that were attacked by it.
 */
-void state::resetAttacks(int attackerCell, bool isWhite)
+void HxTChessEngine::resetAttacks(int attackerCell, bool isWhite)
 {
 	//If pieces of the same type were attacking the same cells as attackerCell, I need to recalculate their attacks
 	uint64_t oldAttacks = getAllAttacks(attackerCell);
@@ -279,13 +279,14 @@ void state::resetAttacks(int attackerCell, bool isWhite)
 	}
 }
 
-void state::updateAttacksBeforeMove(int pieceType, bool isWhite, int from, int to)
+uint64_t recalculateQueue;
+void HxTChessEngine::updateAttacksBeforeMove(int pieceType, bool isWhite, int from, int to)
 {
 	//reset all attacked cells by the starting position
 	resetAttacks(from, isWhite);
 
 	//if there is another piece reset its attacks
-	if (getBB(core.occupied, to))
+	if (getBB(occupiedCells, to))
 		resetAttacks(to, !isWhite);
 
 	//If starting cell was attacked by sliding pieces, i need to reset their attacks and recalculate after move
@@ -317,7 +318,7 @@ void state::updateAttacksBeforeMove(int pieceType, bool isWhite, int from, int t
 	}
 }
 
-void state::updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to) {
+void HxTChessEngine::updateAttacksAfterMove(int pieceType, bool isWhite, int from, int to) {
 	//set new attacks
 	setAttacks(to, isWhite);
 

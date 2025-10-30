@@ -21,7 +21,7 @@
     <ClCompile Include="20250903 HxTChessEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="state.cpp">
+    <ClCompile Include="HxTChessEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="interfaces.cpp">
@@ -51,22 +51,31 @@
     <ClCompile Include="imgui\backends\imgui_impl_win32.cpp">
       <Filter>ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="state_moves.cpp">
+    <ClCompile Include="HxTChessEngine_moves.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="state_evaluation.cpp">
+    <ClCompile Include="HxTChessEngine_evaluation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="state_utilities.cpp">
+    <ClCompile Include="HxTChessEngine_utilities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="state_attacks.cpp">
+    <ClCompile Include="HxTChessEngine_attacks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="state_moves_generator.cpp">
+    <ClCompile Include="HxTChessEngine_moves_generator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="state_opening.cpp">
+    <ClCompile Include="HxTChessEngine_opening.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HxTChessEngine_zobrist.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HxTChessEngine_TranspositionTable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -74,7 +83,7 @@
     <ClInclude Include="constants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="state.h">
+    <ClInclude Include="HxTChessEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="interfaces.h">
@@ -85,6 +94,9 @@
     </ClInclude>
     <ClInclude Include="stb_image.h">
       <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

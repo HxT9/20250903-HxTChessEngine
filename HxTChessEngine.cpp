@@ -1,8 +1,8 @@
-﻿#include "state.h"
+﻿#include "HxTChessEngine.h"
 #include "constants.h"
 #include <iostream>
 
-state::state() {
+HxTChessEngine::HxTChessEngine() {
 	core.whitePawns = 0;
 	core.whiteRooks = 0;
 	core.whiteKnights = 0;
@@ -17,16 +17,19 @@ state::state() {
 	core.blackQueens = 0;
 	core.blackKing = 0;
 
-	core.enPassant = 0;
 	core.onTakeWhite = 0;
 	core.onTakeBlack = 0;
 
+	core.enPassant = -1;
+
 	core.isWhiteTurn = true;
 
-	core.whiteKingCastle = false;
+	core.whiteKingOOCastle = false;
+	core.whiteKingOOOCastle = false;
 	core.whiteOORCanCastle = true;
 	core.whiteOOORCanCastle = true;
-	core.blackKingCastle = false;
+	core.blackKingOOCastle = false;
+	core.blackKingOOOCastle = false;
 	core.blackOORCanCastle = true;
 	core.blackOOORCanCastle = true;
 
@@ -52,17 +55,16 @@ state::state() {
 	checkingPosition = 0;
 	history.index = 0;
 
-	recalculateQueue = 0;
-
 	core.evaluation = 0;
 	for (int i = 0; i < 64; i++)
 		core.cellEvaluation[i] = 0;
+
 }
 
-state::~state() {
+HxTChessEngine::~HxTChessEngine() {
 }
 
-void state::init()
+void HxTChessEngine::init()
 {
 	initPieces();
 	initAttacks();
@@ -72,6 +74,16 @@ void state::init()
 
 	updatePossibleMoves();
 
+	std::cout << "[+] Load Zobrist" << std::endl;
+	zobrist.init(this);
+	zobrist.calculateHash();
+	std::cout << "[+] Done" << std::endl;
+
+	std::cout << "[+] Load Transposition Table" << std::endl;
+	tTable = TranspositionTable(256);
+	tTable.init();
+	std::cout << "[+] Done" << std::endl;
+
 	std::cout << "[+] Load Openings" << std::endl;
 	openingBook.readFromFile("openings.txt");
 	otherData.cur_opening = &openingBook;
@@ -80,7 +92,7 @@ void state::init()
 	searchPosition();
 }
 
-bool state::preMove_updateBoard(int cellStart, int cellEnd, bool& isWhite, int& pieceType, bool& capture, int& capturedPieceType)
+bool HxTChessEngine::preMove_updateBoard(int cellStart, int cellEnd, bool& isWhite, int& pieceType, int& capturedPieceType)
 {
 	isWhite = isCellWhite(cellStart);
 
@@ -98,8 +110,7 @@ bool state::preMove_updateBoard(int cellStart, int cellEnd, bool& isWhite, int& 
 	}
 
 	pieceType = getPieceType(cellStart);
-	capture = isCellOccupied(cellEnd);
-	if (capture)
+	if (isCellOccupied(cellEnd))
 		capturedPieceType = getPieceType(cellEnd);
 	else
 		capturedPieceType = 0;
@@ -109,11 +120,11 @@ bool state::preMove_updateBoard(int cellStart, int cellEnd, bool& isWhite, int& 
 	return true;
 }
 
-void state::postMove_updateBoard(int cellStart, int cellEnd, bool isWhite, int pieceType, bool capture, int capturedPieceType) {
-	core.isWhiteTurn = !isWhite;
+void HxTChessEngine::postMove_updateBoard(int cellStart, int cellEnd, bool isWhite, int pieceType, int capturedPieceType) {
+	zobrist.updateHash(cellStart, cellEnd, isWhite, pieceType, capturedPieceType);
 }
 
-void state::updateBoard(int cellStart, int cellEnd, bool isWhite, int pieceType, bool capture) {
+void HxTChessEngine::updateBoard(int cellStart, int cellEnd, bool isWhite, int pieceType, int capturedPieceType) {
 	if (isEnded) return;
 
 	if (inCheck(core.isWhiteTurn) && !hasAnyLegalMove(core.isWhiteTurn)) {
@@ -122,7 +133,7 @@ void state::updateBoard(int cellStart, int cellEnd, bool isWhite, int pieceType,
 
 	updatePossibleMoves();
 
-	char* _pgn = getPgn(cellStart, cellEnd, isWhite, pieceType, capture);
+	char* _pgn = getPgn(cellStart, cellEnd, isWhite, pieceType, capturedPieceType > 0);
 	pgn.push_back(std::string(_pgn));
 	
 	searchPosition();
@@ -133,7 +144,7 @@ void state::updateBoard(int cellStart, int cellEnd, bool isWhite, int pieceType,
 		makeMove(otherData.bestMove.from, otherData.bestMove.to);
 }
 
-void state::end(bool isWhiteWin, int endCause) {
+void HxTChessEngine::end(bool isWhiteWin, int endCause) {
 	isEnded = true;
 	printf_s("Winner: %s, EndCause: %i\n", isWhiteWin ? "White" : "Black", endCause);
 	return;

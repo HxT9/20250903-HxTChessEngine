@@ -1,35 +1,33 @@
-#include "state.h"
+#include "HxTChessEngine.h"
 #include <fstream>
 #include <sstream>
 #include <regex>
 
-openingTree* openingBook;
-
-openingTree::openingTree() {
+OpeningTree::OpeningTree() {
 	parent = nullptr;
 	move = "";
 }
 
-openingTree::openingTree(openingTree* _parent, std::string _move) : openingTree() {
+OpeningTree::OpeningTree(OpeningTree* _parent, std::string _move) : OpeningTree() {
 	parent = _parent;
 	move = _move;
 }
 
-inline bool openingTree::operator==(const openingTree& other) {
+inline bool OpeningTree::operator==(const OpeningTree& other) {
 	return move == other.move;
 }
 
-void openingTree::addNextMove(std::vector<std::string> _move) {
+void OpeningTree::addNextMove(std::vector<std::string> _move) {
 	if (_move.empty())
 		return;
 
 	auto it = std::find_if(nextMoves.begin(), nextMoves.end(),
-		[&](const openingTree* child) {
+		[&](const OpeningTree* child) {
 			return child->move == _move[0];
 		});
 
 	if (it == nextMoves.end())
-		nextMoves.emplace_back(new openingTree(this, _move[0]));
+		nextMoves.emplace_back(new OpeningTree(this, _move[0]));
 
 	//Remove first element and recurse
 	if (_move.size() > 0) {
@@ -43,7 +41,7 @@ void openingTree::addNextMove(std::vector<std::string> _move) {
 	}
 }
 
-void openingTree::readFromFile(const char* file) {
+void OpeningTree::readFromFile(const char* file) {
 	std::string line;
 	std::vector<std::string> moves;
 
@@ -66,7 +64,7 @@ void openingTree::readFromFile(const char* file) {
 	i.close();
 }
 
-openingTree* openingTree::getNext(std::string move) {
+OpeningTree* OpeningTree::getNext(std::string move) {
 	if (move == "" && nextMoves.size() > 0)
 		return nextMoves.at(0);
 

@@ -1,9 +1,8 @@
-#include "state.h"
+#include "HxTChessEngine.h"
 #include <vector>
-#include <random>
-#include <chrono>
+#include "utils.h"
 
-state_moves_generator_generatedMoves generatedMoves;
+StateMovesGeneratorGeneratedMoves generatedMoves;
 
 void initKingMoves()
 {
@@ -180,11 +179,6 @@ std::vector<uint64_t> getOccupancyVariations(uint64_t mask) {
 		occupancies.push_back(occ);
 	}
 	return occupancies;
-}
-
-uint64_t random64() {
-	static std::mt19937_64 rng((uint64_t)std::chrono::high_resolution_clock::now().time_since_epoch().count());
-	return rng();
 }
 
 void initRookBishopMoves(bool isRook) {
